@@ -90,6 +90,7 @@ fun SeasonTabs(
     onSeasonSelected: (Int) -> Unit,
     onSeasonLongPress: (Int) -> Unit = {},
     selectedTabFocusRequester: FocusRequester,
+    upFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null
 ) {
     // Move season 0 (specials) to the end
@@ -112,6 +113,8 @@ fun SeasonTabs(
     val textSecondary = NuvioTheme.extendedColors.textSecondary
     val lazyListState = rememberLazyListState()
 
+    var suppressFocusSwitch by remember { mutableStateOf(false) }
+
     LaunchedEffect(sortedSeasons, selectedSeason) {
         val selectedIndex = sortedSeasons.indexOf(selectedSeason)
         if (selectedIndex < 0) return@LaunchedEffect
@@ -119,7 +122,9 @@ fun SeasonTabs(
         val visibleIndices = lazyListState.layoutInfo.visibleItemsInfo.map { it.index }
         if (selectedIndex in visibleIndices) return@LaunchedEffect
 
+        suppressFocusSwitch = true
         lazyListState.scrollToItem(selectedIndex)
+        suppressFocusSwitch = false
     }
 
     LazyRow(
@@ -149,11 +154,14 @@ fun SeasonTabs(
                         if (isSelected && downFocusRequester != null) {
                             down = downFocusRequester
                         }
+                        if (upFocusRequester != null) {
+                            up = upFocusRequester
+                        }
                     }
                     .onFocusChanged {
                     val nowFocused = it.isFocused
                     isFocused = nowFocused
-                    if (nowFocused && !isSelected) {
+                    if (nowFocused && !isSelected && !suppressFocusSwitch) {
                         onSeasonSelected(season)
                     }
                 }
@@ -485,7 +493,7 @@ private fun EpisodeCard(
     val thumbnailRequest = remember(context, episode.thumbnail, thumbnailWidthPx, thumbnailHeightPx, shouldBlur) {
         ImageRequest.Builder(context)
             .data(episode.thumbnail)
-            .crossfade(false)
+            .crossfade(true)
             .size(width = thumbnailWidthPx, height = thumbnailHeightPx)
             .apply {
                 if (shouldBlur) {

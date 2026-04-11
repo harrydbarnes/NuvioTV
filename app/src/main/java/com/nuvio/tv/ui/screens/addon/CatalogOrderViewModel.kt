@@ -2,6 +2,8 @@ package com.nuvio.tv.ui.screens.addon
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nuvio.tv.core.sync.homeCatalogKey
+import com.nuvio.tv.core.sync.homeLegacyDisabledCatalogKey
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.domain.model.Addon
@@ -74,13 +76,15 @@ class CatalogOrderViewModel @Inject constructor(
                 addonRepository.getInstalledAddons(),
                 collectionsDataStore.collections,
                 layoutPreferenceDataStore.homeCatalogOrderKeys,
-                layoutPreferenceDataStore.disabledHomeCatalogKeys
-            ) { addons, collections, savedOrderKeys, disabledKeys ->
+                layoutPreferenceDataStore.disabledHomeCatalogKeys,
+                layoutPreferenceDataStore.customCatalogTitles
+            ) { addons, collections, savedOrderKeys, disabledKeys, customTitles ->
                 buildOrderedCatalogItems(
                     addons = addons,
                     collections = collections,
                     savedOrderKeys = savedOrderKeys,
-                    disabledKeys = disabledKeys.toSet()
+                    disabledKeys = disabledKeys.toSet(),
+                    customTitles = customTitles
                 )
             }.collectLatest { orderedItems ->
                 disabledKeysCache = orderedItems.filter { it.isDisabled }.map { it.disableKey }.toSet()
@@ -98,7 +102,8 @@ class CatalogOrderViewModel @Inject constructor(
         addons: List<Addon>,
         collections: List<Collection> = emptyList(),
         savedOrderKeys: List<String>,
-        disabledKeys: Set<String>
+        disabledKeys: Set<String>,
+        customTitles: Map<String, String> = emptyMap()
     ): List<CatalogOrderItem> {
         val defaultEntries = buildDefaultCatalogEntries(addons)
         val collectionEntries = collections.map { collection ->
@@ -126,13 +131,15 @@ class CatalogOrderViewModel @Inject constructor(
 
         return effectiveOrder.mapIndexedNotNull { index, key ->
             val entry = availableMap[key] ?: return@mapIndexedNotNull null
+            val displayName = customTitles[key]?.takeIf { it.isNotBlank() } ?: entry.catalogName
             CatalogOrderItem(
                 key = entry.key,
                 disableKey = entry.disableKey,
-                catalogName = entry.catalogName,
+                catalogName = displayName,
                 addonName = entry.addonName,
                 typeLabel = entry.typeLabel,
-                isDisabled = entry.disableKey in disabledKeys,
+                isDisabled = entry.disableKey in disabledKeys ||
+                    (entry.legacyDisableKey != null && entry.legacyDisableKey in disabledKeys),
                 canMoveUp = index > 0,
                 canMoveDown = index < effectiveOrder.lastIndex
             )
@@ -156,7 +163,12 @@ class CatalogOrderViewModel @Inject constructor(
                         entries.add(
                             CatalogOrderEntry(
                                 key = key,
-                                disableKey = disableKey(
+                                disableKey = homeCatalogKey(
+                                    addonId = addon.id,
+                                    type = catalog.apiType,
+                                    catalogId = catalog.id
+                                ),
+                                legacyDisableKey = homeLegacyDisabledCatalogKey(
                                     addonBaseUrl = addon.baseUrl,
                                     type = catalog.apiType,
                                     catalogId = catalog.id,
@@ -175,16 +187,7 @@ class CatalogOrderViewModel @Inject constructor(
     }
 
     private fun catalogKey(addonId: String, type: String, catalogId: String): String {
-        return "${addonId}_${type}_${catalogId}"
-    }
-
-    private fun disableKey(
-        addonBaseUrl: String,
-        type: String,
-        catalogId: String,
-        catalogName: String
-    ): String {
-        return "${addonBaseUrl}_${type}_${catalogId}_${catalogName}"
+        return homeCatalogKey(addonId, type, catalogId)
     }
 
     private fun CatalogDescriptor.isSearchOnlyCatalog(): Boolean {
@@ -211,6 +214,7 @@ data class CatalogOrderItem(
 private data class CatalogOrderEntry(
     val key: String,
     val disableKey: String,
+    val legacyDisableKey: String? = null,
     val catalogName: String,
     val addonName: String,
     val typeLabel: String

@@ -120,8 +120,16 @@ fun StreamScreen(
     var pendingRestoreOnResume by rememberSaveable { mutableStateOf(false) }
     var showPlayerChoiceDialog by remember { mutableStateOf(false) }
     var pendingPlaybackInfo by remember { mutableStateOf<StreamPlaybackInfo?>(null) }
+    var showP2pConsentDialog by remember { mutableStateOf(false) }
+    var pendingTorrentPlaybackInfo by remember { mutableStateOf<StreamPlaybackInfo?>(null) }
+    val p2pEnabled by viewModel.p2pEnabled.collectAsStateWithLifecycle(initialValue = false)
 
     fun routePlayback(playbackInfo: StreamPlaybackInfo) {
+        if (playbackInfo.isTorrent && !p2pEnabled) {
+            pendingTorrentPlaybackInfo = playbackInfo
+            showP2pConsentDialog = true
+            return
+        }
         when (playerPreference) {
             PlayerPreference.INTERNAL -> {
                 onStreamSelected(playbackInfo)
@@ -144,6 +152,12 @@ fun StreamScreen(
     }
 
     fun routeAutoPlay(playbackInfo: StreamPlaybackInfo) {
+        // Always check P2P consent for torrents, even in direct auto-play flow
+        if (playbackInfo.isTorrent && !p2pEnabled) {
+            pendingTorrentPlaybackInfo = playbackInfo
+            showP2pConsentDialog = true
+            return
+        }
         if (uiState.isDirectAutoPlayFlow) {
             onAutoPlayResolved(playbackInfo)
             return
@@ -161,14 +175,22 @@ fun StreamScreen(
     LaunchedEffect(uiState.autoPlayStream) {
         val stream = uiState.autoPlayStream ?: return@LaunchedEffect
         val playbackInfo = viewModel.getStreamForPlayback(stream)
-        if (playbackInfo.url != null) {
+        // Torrent streams have url == null but carry an infoHash; navigation
+        // builds a torrent:// sentinel URL downstream.
+        if (playbackInfo.url != null || (playbackInfo.isTorrent && playbackInfo.infoHash != null)) {
             routeAutoPlay(playbackInfo)
         }
     }
 
     LaunchedEffect(uiState.autoPlayPlaybackInfo) {
         val playbackInfo = uiState.autoPlayPlaybackInfo ?: return@LaunchedEffect
-        if (playbackInfo.url != null) {
+        if (playbackInfo.url != null || (playbackInfo.isTorrent && playbackInfo.infoHash != null)) {
+            // Torrent cached links still need P2P consent
+            if (playbackInfo.isTorrent && !p2pEnabled) {
+                pendingTorrentPlaybackInfo = playbackInfo
+                showP2pConsentDialog = true
+                return@LaunchedEffect
+            }
             onAutoPlayResolved(playbackInfo)
             viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
         }
@@ -293,6 +315,25 @@ fun StreamScreen(
                 }
             )
         }
+
+        if (showP2pConsentDialog && pendingTorrentPlaybackInfo != null) {
+            P2pConsentDialog(
+                onEnableP2p = {
+                    viewModel.enableP2p()
+                    showP2pConsentDialog = false
+                    val info = pendingTorrentPlaybackInfo!!
+                    pendingTorrentPlaybackInfo = null
+                    onStreamSelected(info)
+                },
+                onDismiss = {
+                    showP2pConsentDialog = false
+                    pendingTorrentPlaybackInfo = null
+                    // Cancelled P2P consent — fall back to manual stream selection
+                    viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
+                }
+            )
+        }
+
     }
 }
 
@@ -876,7 +917,7 @@ private fun StreamsList(
         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
     ) {
         itemsIndexed(streams, key = { index, stream ->
-            "${stream.addonName}_${stream.url ?: stream.infoHash ?: stream.ytId ?: "unknown"}_$index"
+            stream.stableKey(index)
         }) { index, stream ->
             StreamCard(
                 stream = stream,
@@ -1115,6 +1156,117 @@ private fun PlayerChoiceDialog(
                             text = stringResource(R.string.stream_player_external),
                             style = MaterialTheme.typography.titleMedium,
                             color = if (externalFocused) NuvioColors.OnSecondary else NuvioColors.TextPrimary,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun P2pConsentDialog(
+    onEnableP2p: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(NuvioColors.BackgroundCard)
+        ) {
+            Column(
+                modifier = Modifier
+                    .width(460.dp)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.p2p_consent_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = NuvioColors.TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(R.string.p2p_consent_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NuvioColors.TextSecondary,
+                    textAlign = TextAlign.Start
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    var cancelFocused by remember { mutableStateOf(false) }
+                    Card(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester)
+                            .onFocusChanged { cancelFocused = it.isFocused },
+                        colors = CardDefaults.colors(
+                            containerColor = NuvioColors.BackgroundElevated,
+                            focusedContainerColor = NuvioColors.BackgroundElevated
+                        ),
+                        border = CardDefaults.border(
+                            focusedBorder = Border(
+                                border = BorderStroke(2.dp, NuvioColors.FocusRing),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        ),
+                        shape = CardDefaults.shape(shape = RoundedCornerShape(12.dp)),
+                        scale = CardDefaults.scale(focusedScale = 1.05f)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.p2p_consent_cancel),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = NuvioColors.TextPrimary,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                .fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    var enableFocused by remember { mutableStateOf(false) }
+                    Card(
+                        onClick = onEnableP2p,
+                        modifier = Modifier
+                            .weight(1f)
+                            .onFocusChanged { enableFocused = it.isFocused },
+                        colors = CardDefaults.colors(
+                            containerColor = NuvioColors.BackgroundElevated,
+                            focusedContainerColor = NuvioColors.Secondary
+                        ),
+                        border = CardDefaults.border(
+                            focusedBorder = Border(
+                                border = BorderStroke(2.dp, NuvioColors.FocusRing),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        ),
+                        shape = CardDefaults.shape(shape = RoundedCornerShape(12.dp)),
+                        scale = CardDefaults.scale(focusedScale = 1.05f)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.p2p_consent_enable),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (enableFocused) NuvioColors.OnSecondary else NuvioColors.TextPrimary,
                             modifier = Modifier
                                 .padding(horizontal = 16.dp, vertical = 14.dp)
                                 .fillMaxWidth(),
