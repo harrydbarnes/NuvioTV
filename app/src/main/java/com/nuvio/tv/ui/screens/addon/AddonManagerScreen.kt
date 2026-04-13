@@ -1108,6 +1108,9 @@ private fun AddonCardContent(
     onMoveDown: () -> Unit = {},
     onRemove: () -> Unit = {}
 ) {
+    var isUrlExpanded by remember { mutableStateOf(false) }
+    var showExpandButton by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.padding(20.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1186,8 +1189,34 @@ private fun AddonCardContent(
         Text(
             text = addon.baseUrl,
             style = MaterialTheme.typography.bodySmall,
-            color = NuvioColors.TextTertiary
+            color = NuvioColors.TextTertiary,
+            maxLines = if (isUrlExpanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { textLayoutResult ->
+                if (textLayoutResult.hasVisualOverflow && !isUrlExpanded) {
+                    showExpandButton = true
+                }
+            }
         )
+
+        if (showExpandButton) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Button(
+                onClick = { isUrlExpanded = !isUrlExpanded },
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioColors.BackgroundCard,
+                    contentColor = NuvioColors.TextSecondary,
+                    focusedContainerColor = NuvioColors.FocusBackground,
+                    focusedContentColor = NuvioColors.Primary
+                ),
+                shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+            ) {
+                Text(
+                    text = if (isUrlExpanded) stringResource(R.string.addon_collapse_url) else stringResource(R.string.addon_expand_url),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
         Text(

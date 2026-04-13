@@ -1509,4 +1509,6 @@
     <string name="collections_tab_all">All</string>
     <string name="collections_tab_combined">Combined</string>
 
+    <string name="addon_expand_url">Expand URL</string>
+    <string name="addon_collapse_url">Collapse URL</string>
 </resources>
