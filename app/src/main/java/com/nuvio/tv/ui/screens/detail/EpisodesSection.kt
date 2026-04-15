@@ -3,6 +3,7 @@ package com.nuvio.tv.ui.screens.detail
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.Canvas
@@ -114,6 +115,13 @@ fun SeasonTabs(
     val lazyListState = rememberLazyListState()
 
     var suppressFocusSwitch by remember { mutableStateOf(false) }
+    var pendingSeason by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(pendingSeason) {
+        val target = pendingSeason ?: return@LaunchedEffect
+        delay(150)
+        onSeasonSelected(target)
+        pendingSeason = null
+    }
 
     LaunchedEffect(sortedSeasons, selectedSeason) {
         val selectedIndex = sortedSeasons.indexOf(selectedSeason)
@@ -162,7 +170,7 @@ fun SeasonTabs(
                     val nowFocused = it.isFocused
                     isFocused = nowFocused
                     if (nowFocused && !isSelected && !suppressFocusSwitch) {
-                        onSeasonSelected(season)
+                        pendingSeason = season
                     }
                 }
                     .onPreviewKeyEvent { event ->
@@ -1111,19 +1119,19 @@ private fun formatEpisodeRuntime(runtimeMinutes: Int): String {
 
 private fun formatEpisodeCardDate(isoDate: String): String {
     val locale = Locale.getDefault()
-    val bestPattern = DateFormat.getBestDateTimePattern(locale, "dMMMMy")
-    val outputFormat = SimpleDateFormat(bestPattern, locale)
+    val bestPattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMy")
+    val formatter = java.time.format.DateTimeFormatter.ofPattern(bestPattern, locale)
+
     return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
-        }
-        val date = inputFormat.parse(isoDate)
-        date?.let { outputFormat.format(it) }.orEmpty()
+        val localDate = java.time.Instant.parse(isoDate)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toLocalDate()
+
+        formatter.format(localDate)
     } catch (_: Exception) {
         try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-            val date = inputFormat.parse(isoDate)
-            date?.let { outputFormat.format(it) }.orEmpty()
+            val localDate = java.time.LocalDate.parse(isoDate.substringBefore('T'))
+            formatter.format(localDate)
         } catch (_: Exception) {
             ""
         }

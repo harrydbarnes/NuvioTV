@@ -251,9 +251,9 @@
 
     <!-- SettingsScreen categories -->
     <string name="settings_account">Account</string>
-    <string name="settings_account_subtitle">Account and sync status.</string>
+    <string name="settings_account_subtitle">Account and sync status</string>
     <string name="settings_profiles">Profiles</string>
-    <string name="settings_profiles_subtitle">Manage user profiles.</string>
+    <string name="settings_profiles_subtitle">Manage user profiles</string>
     <string name="settings_layout">Layout</string>
     <string name="settings_layout_subtitle">Home structure and poster styles.</string>
     <string name="settings_plugins">Plugins</string>
@@ -282,15 +282,15 @@
     <string name="network_connection_offline">Offline</string>
     <string name="settings_debug">Debug</string>
     <string name="settings_debug_subtitle">Developer tools and feature flags.</string>
-    <string name="settings_plugins_section_subtitle">Manage repositories, providers, and plugin states.</string>
-    <string name="settings_account_section_subtitle">Account and sync status.</string>
+    <string name="settings_plugins_section_subtitle">Manage repositories, providers, and plugin states</string>
+    <string name="settings_account_section_subtitle">Account and sync status</string>
     <string name="account_stat_addons">addons</string>
     <string name="account_stat_plugins">plugins</string>
     <string name="account_stat_library">library</string>
     <string name="account_stat_progress">progress</string>
     <string name="account_stat_watched">watched</string>
     <string name="settings_integrations_section">Integrations</string>
-    <string name="settings_integrations_section_subtitle">Choose TMDB or MDBList</string>
+    <string name="settings_integrations_section_subtitle">Manage available integrations</string>
     <string name="settings_tmdb_subtitle">Metadata enrichment controls</string>
     <string name="settings_mdblist_subtitle">External ratings providers</string>
     <string name="settings_animeskip_subtitle">Anime intro/outro skip timestamps</string>
@@ -578,6 +578,8 @@
     <string name="layout_preset_balanced">Balanced</string>
     <string name="layout_preset_comfort">Comfort</string>
     <string name="layout_preset_large">Large</string>
+    <string name="layout_memory_only_scroll">Memory-Only Vertical Scroll</string>
+    <string name="layout_memory_only_scroll_sub">Skip loading new images while scrolling vertically.</string>
     <string name="layout_preset_sharp">Sharp</string>
     <string name="layout_preset_subtle">Subtle</string>
     <string name="layout_preset_classic">Classic</string>
@@ -1504,6 +1506,12 @@
     <string name="collections_editor_placeholder_backdrop">Backdrop image URL (optional)</string>
     <string name="collections_editor_placeholder_folder">Folder name</string>
     <string name="collections_editor_placeholder_gif">Animated GIF URL (plays only while focused)</string>
+    <string name="collections_editor_genre_filter">Genre Filter</string>
+    <string name="collections_editor_choose_genre">Choose</string>
+    <string name="collections_editor_select_genre">Select genre</string>
+    <string name="collections_editor_all_genres">All genres</string>
+    <string name="collections_editor_genre_required">Genre required</string>
+    <string name="collections_editor_genre_optional">Genre filter available</string>
     <string name="collections_card_title">Collections</string>
     <string name="collections_card_subtitle">Group catalogs into folders on your home screen</string>
     <string name="collections_tab_all">All</string>
