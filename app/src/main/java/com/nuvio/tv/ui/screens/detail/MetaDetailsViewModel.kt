@@ -131,6 +131,7 @@ class MetaDetailsViewModel @Inject constructor(
         observeMovieWatched()
         observeBlurUnwatchedEpisodes()
         observeShowFullReleaseDate()
+        observeShowClock()
         observeHideUnreleasedContent()
         loadMeta()
     }
@@ -227,6 +228,18 @@ class MetaDetailsViewModel @Inject constructor(
                     showTrailerControls = showControls,
                     hideLogoDuringTrailer = hideLogo
                 )
+            }
+        }
+    }
+
+    private fun observeShowClock() {
+        viewModelScope.launch {
+            layoutPreferenceDataStore.showClockDetails
+                .distinctUntilChanged()
+                .collectLatest { enabled ->
+                _uiState.update { state ->
+                    if (state.showClock == enabled) state else state.copy(showClock = enabled)
+                }
             }
         }
     }

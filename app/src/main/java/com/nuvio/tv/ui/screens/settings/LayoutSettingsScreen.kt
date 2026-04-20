@@ -410,6 +410,17 @@ fun LayoutSettingsContent(
                         },
                         onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
                     )
+                    CompactToggleRow(
+                        title = stringResource(R.string.layout_show_clock_home),
+                        subtitle = stringResource(R.string.layout_show_clock_home_sub),
+                        checked = uiState.showClockHome,
+                        onToggle = {
+                            viewModel.onEvent(
+                                LayoutSettingsEvent.SetShowClockHome(!uiState.showClockHome)
+                            )
+                        },
+                        onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
+                    )
                 }
             }
 
@@ -469,6 +480,17 @@ fun LayoutSettingsContent(
                         onToggle = {
                             viewModel.onEvent(
                                 LayoutSettingsEvent.SetShowFullReleaseDate(!uiState.showFullReleaseDate)
+                            )
+                        },
+                        onFocused = { focusedSection = LayoutSettingsSection.DETAIL_PAGE }
+                    )
+                    CompactToggleRow(
+                        title = stringResource(R.string.layout_show_clock_details),
+                        subtitle = stringResource(R.string.layout_show_clock_details_sub),
+                        checked = uiState.showClockDetails,
+                        onToggle = {
+                            viewModel.onEvent(
+                                LayoutSettingsEvent.SetShowClockDetails(!uiState.showClockDetails)
                             )
                         },
                         onFocused = { focusedSection = LayoutSettingsSection.DETAIL_PAGE }

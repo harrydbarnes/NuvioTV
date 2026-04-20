@@ -33,7 +33,8 @@ private data class CoreLayoutPrefs(
     val catalogAddonNameEnabled: Boolean,
     val catalogTypeSuffixEnabled: Boolean,
     val hideUnreleasedContent: Boolean,
-    val showFullReleaseDate: Boolean
+    val showFullReleaseDate: Boolean,
+    val showClockHome: Boolean
 )
 
 private data class FocusedBackdropPrefs(
@@ -53,6 +54,7 @@ private data class LayoutUiPrefs(
     val catalogTypeSuffixEnabled: Boolean,
     val hideUnreleasedContent: Boolean,
     val showFullReleaseDate: Boolean,
+    val showClockHome: Boolean,
     val modernLandscapePostersEnabled: Boolean,
     val modernHeroFullScreenBackdropEnabled: Boolean,
     val focusedBackdropExpandEnabled: Boolean,
@@ -83,17 +85,20 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                 catalogAddonNameEnabled = catalogAddonNameEnabled,
                 catalogTypeSuffixEnabled = true,
                 hideUnreleasedContent = false,
-                showFullReleaseDate = true
+                showFullReleaseDate = true,
+                showClockHome = false
             )
         },
         layoutPreferenceDataStore.catalogTypeSuffixEnabled,
         layoutPreferenceDataStore.hideUnreleasedContent,
-        layoutPreferenceDataStore.showFullReleaseDate
-    ) { corePrefs, catalogTypeSuffixEnabled, hideUnreleasedContent, showFullReleaseDate ->
+        layoutPreferenceDataStore.showFullReleaseDate,
+        layoutPreferenceDataStore.showClockHome
+    ) { corePrefs, catalogTypeSuffixEnabled, hideUnreleasedContent, showFullReleaseDate, showClockHome ->
         corePrefs.copy(
             catalogTypeSuffixEnabled = catalogTypeSuffixEnabled,
             hideUnreleasedContent = hideUnreleasedContent,
-            showFullReleaseDate = showFullReleaseDate
+            showFullReleaseDate = showFullReleaseDate,
+            showClockHome = showClockHome
         )
     }
 
@@ -136,6 +141,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
             catalogTypeSuffixEnabled = corePrefs.catalogTypeSuffixEnabled,
             hideUnreleasedContent = corePrefs.hideUnreleasedContent,
             showFullReleaseDate = corePrefs.showFullReleaseDate,
+            showClockHome = corePrefs.showClockHome,
             modernLandscapePostersEnabled = false,
             modernHeroFullScreenBackdropEnabled = false,
             focusedBackdropExpandEnabled = focusedBackdropPrefs.expandEnabled,
@@ -196,6 +202,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                         catalogTypeSuffixEnabled = prefs.catalogTypeSuffixEnabled,
                         hideUnreleasedContent = prefs.hideUnreleasedContent,
                         showFullReleaseDate = prefs.showFullReleaseDate,
+                        showClock = prefs.showClockHome,
                         modernLandscapePostersEnabled = prefs.modernLandscapePostersEnabled,
                         modernHeroFullScreenBackdropEnabled = prefs.modernHeroFullScreenBackdropEnabled,
                         focusedPosterBackdropExpandEnabled = prefs.focusedBackdropExpandEnabled,

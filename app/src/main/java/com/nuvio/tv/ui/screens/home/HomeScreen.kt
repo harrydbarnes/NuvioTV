@@ -44,6 +44,7 @@ import com.nuvio.tv.domain.model.LibraryListTab
 import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.ui.components.ErrorState
+import com.nuvio.tv.ui.components.GlobalClockOverlay
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.components.PosterCardDefaults
@@ -342,6 +343,13 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        if (uiState.showClock) {
+            GlobalClockOverlay(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+            )
         }
 
         val startupAuthNotice = uiState.startupAuthNotice

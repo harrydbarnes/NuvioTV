@@ -55,7 +55,8 @@ data class HomeUiState(
     val memoryOnlyVerticalScroll: Boolean = false,
     val blurUnwatchedEpisodes: Boolean = false,
     val startupAuthNotice: StartupAuthNotice? = null,
-    val homeRows: List<HomeRow> = emptyList()
+    val homeRows: List<HomeRow> = emptyList(),
+    val showClock: Boolean = false
 )
 
 @Immutable

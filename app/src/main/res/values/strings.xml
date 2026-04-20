@@ -544,6 +544,10 @@
     <string name="layout_show_hero_sub">Display hero carousel at top of home.</string>
     <string name="layout_show_discover">Show Discover in Search</string>
     <string name="layout_show_discover_sub">Show browse section when search is empty.</string>
+    <string name="layout_show_clock_home">Show Clock on Home</string>
+    <string name="layout_show_clock_home_sub">Display the current time in the top right of the home screen.</string>
+    <string name="layout_show_clock_details">Show Clock on Details</string>
+    <string name="layout_show_clock_details_sub">Display the current time in the top right of the details screen.</string>
     <string name="layout_poster_labels">Show Poster Labels</string>
     <string name="layout_poster_labels_sub">Show titles under posters in rows, grid, and see-all.</string>
     <string name="layout_addon_name">Show Addon Name</string>

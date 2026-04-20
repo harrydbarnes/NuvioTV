@@ -64,7 +64,8 @@ data class MetaDetailsUiState(
     val shouldShowCommentsSection: Boolean = false,
     val selectedComment: TraktCommentReview? = null,
     val userMessage: String? = null,
-    val userMessageIsError: Boolean = false
+    val userMessageIsError: Boolean = false,
+    val showClock: Boolean = false
 )
 
 sealed class MetaDetailsEvent {

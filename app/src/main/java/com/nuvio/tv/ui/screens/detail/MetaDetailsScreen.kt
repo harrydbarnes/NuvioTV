@@ -103,6 +103,7 @@ import com.nuvio.tv.domain.model.TraktCommentReview
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.ui.components.ErrorState
+import com.nuvio.tv.ui.components.GlobalClockOverlay
 import com.nuvio.tv.ui.components.MetaDetailsSkeleton
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.components.TrailerPlayer
@@ -655,6 +656,13 @@ fun MetaDetailsScreen(
                 },
                 onSave = { viewModel.onEvent(MetaDetailsEvent.OnPickerSave) },
                 onDismiss = { viewModel.onEvent(MetaDetailsEvent.OnPickerDismiss) }
+            )
+        }
+
+        if (uiState.showClock) {
+            GlobalClockOverlay(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
             )
         }
 
