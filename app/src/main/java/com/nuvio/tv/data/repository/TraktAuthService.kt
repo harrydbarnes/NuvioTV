@@ -120,9 +120,6 @@ class TraktAuthService @Inject constructor(
     suspend fun getCurrentAuthState(): TraktAuthState = traktAuthDataStore.state.first()
 
     suspend fun startDeviceAuth(): Result<TraktDeviceCodeResponseDto> {
-        if (!hasRequiredCredentials()) {
-            return Result.failure(IllegalStateException("Missing TRAKT credentials"))
-        }
 
         val response = try {
             traktApi.requestDeviceCode(
@@ -152,9 +149,6 @@ class TraktAuthService @Inject constructor(
     }
 
     suspend fun pollDeviceToken(): TraktTokenPollResult {
-        if (!hasRequiredCredentials()) {
-            return TraktTokenPollResult.Failed("Missing TRAKT credentials")
-        }
 
         val state = getCurrentAuthState()
         val deviceCode = state.deviceCode

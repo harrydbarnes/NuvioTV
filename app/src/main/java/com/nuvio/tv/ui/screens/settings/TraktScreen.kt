@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -139,6 +140,15 @@ fun TraktSettingsContent(
     val qrBitmap = remember(userCode) {
         userCode?.let {
             runCatching { QrCodeGenerator.generate("https://trakt.tv/activate/$it", 420) }.getOrNull()
+        }
+    }
+
+    var hasAttemptedAutoLogin by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!hasAttemptedAutoLogin && uiState.mode == TraktConnectionMode.DISCONNECTED && !uiState.isLoading) {
+            hasAttemptedAutoLogin = true
+            viewModel.onConnectClick()
         }
     }
 
@@ -290,7 +300,7 @@ fun TraktSettingsContent(
                             )
                             Button(
                                 onClick = { viewModel.onConnectClick() },
-                                enabled = uiState.credentialsConfigured && !uiState.isLoading,
+                                enabled = !uiState.isLoading,
                                 modifier = Modifier.focusRequester(entryFocusRequester),
                                 colors = ButtonDefaults.colors(
                                     containerColor = NuvioColors.Primary,
@@ -299,13 +309,7 @@ fun TraktSettingsContent(
                             ) {
                                 Text(stringResource(R.string.trakt_login))
                             }
-                            if (!uiState.credentialsConfigured) {
-                                Text(
-                                    text = stringResource(R.string.trakt_missing_credentials),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFFFB74D)
-                                )
-                            }
+
                             uiState.statusMessage?.let { status ->
                                 Text(
                                     text = status,
