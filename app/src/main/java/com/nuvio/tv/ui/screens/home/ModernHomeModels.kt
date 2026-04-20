@@ -557,27 +557,14 @@ internal fun extractYear(releaseInfo: String?): String? {
     return YEAR_REGEX.find(releaseInfo)?.value
 }
 
-@Volatile
-private var cachedDateFormatLocale: java.util.Locale? = null
-@Volatile
-private var cachedDateFormat: java.text.SimpleDateFormat? = null
-
 internal fun extractYearText(type: ContentType, releaseInfo: String?, released: String?, showFullDate: Boolean = true): String? {
     if (showFullDate && type == ContentType.MOVIE) {
         val full = released
             ?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() }
             ?.let {
                 val locale = java.util.Locale.getDefault()
-                val fmt = if (locale == cachedDateFormatLocale && cachedDateFormat != null) {
-                    cachedDateFormat!!
-                } else {
-                    val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMy")
-                    java.text.SimpleDateFormat(pattern, locale).also {
-                        cachedDateFormat = it
-                        cachedDateFormatLocale = locale
-                    }
-                }
-                fmt.format(
+                val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMy")
+                java.text.SimpleDateFormat(pattern, locale).format(
                     java.util.Date(it.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli())
                 )
             }
@@ -586,13 +573,10 @@ internal fun extractYearText(type: ContentType, releaseInfo: String?, released: 
     return extractYear(releaseInfo)
 }
 
-private val HOURS_REGEX = "(\\d+)\\s*h".toRegex()
-private val MINUTES_REGEX = "(\\d+)\\s*m(?:in)?".toRegex()
-
 private fun formatHeroRuntime(runtime: String?): String? {
     val normalized = runtime?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return null
-    val hours = HOURS_REGEX.find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
-    val minutes = MINUTES_REGEX.find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    val hours = "(\\d+)\\s*h".toRegex().find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    val minutes = "(\\d+)\\s*m(?:in)?".toRegex().find(normalized)?.groupValues?.getOrNull(1)?.toIntOrNull()
     val totalMinutes = when {
         hours != null || minutes != null -> (hours ?: 0) * 60 + (minutes ?: 0)
         else -> normalized.filter(Char::isDigit).toIntOrNull()

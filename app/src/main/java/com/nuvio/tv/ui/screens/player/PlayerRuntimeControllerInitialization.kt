@@ -21,6 +21,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.ForwardingRenderer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioTrackAudioOutputProvider
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -108,35 +109,15 @@ internal fun PlayerRuntimeController.initializePlayer(
             )
             mpvPreferredAudioLanguages = preferredAudioLanguages
             mpvHardwareDecodeModeSetting = playerSettings.mpvHardwareDecodeMode
-            var effectiveInternalPlayerEngine = overrideInternalPlayerEngine ?: playerSettings.internalPlayerEngine
-            if (effectiveInternalPlayerEngine == InternalPlayerEngine.AUTO) {
-                val hasAnimeGenre = metaGenres.any { it.equals("anime", ignoreCase = true) }
-                val isAnimationFromJapan = (metaGenres.any { it.equals("animation", ignoreCase = true) } &&
-                        metaCountry?.contains("Japan", ignoreCase = true) == true)
-                val hasAnimeId = currentVideoId?.startsWith("kitsu:") == true ||
-                        currentVideoId?.startsWith("mal:") == true ||
-                        currentVideoId?.startsWith("anilist:") == true
-
-                // AIOMetadata usually matches hasAnimeGenre or hasAnimeId, Cinemeta usually matches isAnimationFromJapan
-                val isAnime = hasAnimeGenre || hasAnimeId || isAnimationFromJapan
-
-                effectiveInternalPlayerEngine = if (isAnime) InternalPlayerEngine.MVP_PLAYER else InternalPlayerEngine.EXOPLAYER
-            }
+            val effectiveInternalPlayerEngine = overrideInternalPlayerEngine ?: playerSettings.internalPlayerEngine
             runtimeInternalPlayerEngineOverride = overrideInternalPlayerEngine
-            if (overrideInternalPlayerEngine == null && playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO) {
-                resolvedAutoPlayerEngine = effectiveInternalPlayerEngine
-            } else if (overrideInternalPlayerEngine != null) {
-                resolvedAutoPlayerEngine = null
-            }
             currentInternalPlayerEngine = effectiveInternalPlayerEngine
             val showLoadingStatus = playerSettings.showPlayerLoadingStatus
-            val deviceAspectMode = deviceLocalPlayerPreferences.aspectMode.first()
             _uiState.update {
                 it.copy(
                     internalPlayerEngine = effectiveInternalPlayerEngine,
                     frameRateMatchingMode = playerSettings.frameRateMatchingMode,
                     resizeMode = playerSettings.resizeMode,
-                    aspectMode = deviceAspectMode,
                     tunnelingEnabled = playerSettings.tunnelingEnabled,
                     loadingMessage = if (showLoadingStatus) context.getString(R.string.player_loading_detecting_format) else null
                 )
@@ -187,12 +168,11 @@ internal fun PlayerRuntimeController.initializePlayer(
                 else -> true
             }
             val requestedLibassRenderType = playerSettings.libassRenderType.toAssRenderType()
-            val libassRenderType = requestedLibassRenderType
-            _uiState.update {
-                it.copy(
-                    useLibass = useLibass,
-                    libassRenderType = playerSettings.libassRenderType
-                )
+            val libassRenderType = when {
+                !useLibass -> requestedLibassRenderType
+                requestedLibassRenderType == AssRenderType.OVERLAY_OPEN_GL -> AssRenderType.EFFECTS_OPEN_GL
+                requestedLibassRenderType == AssRenderType.OVERLAY_CANVAS -> AssRenderType.EFFECTS_CANVAS
+                else -> requestedLibassRenderType
             }
             val loadControl = run {
                 DefaultLoadControl.Builder()
@@ -770,15 +750,19 @@ private class SubtitleOffsetRenderersFactory(
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean
     ): AudioSink {
-        val playbackSpeedAwareProvider = PlaybackSpeedAwareAudioOutputProvider()
-        playbackSpeedAwareProvider.updatePlaybackSpeed(playbackSpeedProvider())
-        onPlaybackSpeedAwareAudioOutputProviderCreated(playbackSpeedAwareProvider)
+        val baseAudioOutputProvider = AudioTrackAudioOutputProvider.Builder(context)
+            .setAudioTrackBufferSizeProvider(FormatAwareAudioTrackBufferProvider())
+            .setMaxPlaybackSpeed(PLAYBACK_SPEEDS.maxOrNull() ?: 2f)
+            .build()
+        val audioOutputProvider = PlaybackSpeedAwareAudioOutputProvider(baseAudioOutputProvider)
+        audioOutputProvider.updatePlaybackSpeed(playbackSpeedProvider())
+        onPlaybackSpeedAwareAudioOutputProviderCreated(audioOutputProvider)
 
         return DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
-            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            .setAudioTrackBufferSizeProvider(FormatAwareAudioTrackBufferProvider())
+            .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
             .setAudioProcessors(arrayOf(gainAudioProcessor))
+            .setAudioOutputProvider(audioOutputProvider)
             .build()
     }
 

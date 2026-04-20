@@ -5,19 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.sync.ProfileSyncService
-import com.nuvio.tv.core.sync.SetProfilePinResult
-import com.nuvio.tv.data.local.ProfileLockStateDataStore
 import com.nuvio.tv.data.remote.supabase.SupabaseProfilePinVerifyResult
 import com.nuvio.tv.data.remote.supabase.AvatarCatalogItem
 import com.nuvio.tv.data.remote.supabase.AvatarRepository
 import com.nuvio.tv.domain.model.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,8 +20,7 @@ import javax.inject.Inject
 class ProfileSelectionViewModel @Inject constructor(
     private val profileManager: ProfileManager,
     private val profileSyncService: ProfileSyncService,
-    private val avatarRepository: AvatarRepository,
-    private val profileLockStateDataStore: ProfileLockStateDataStore
+    private val avatarRepository: AvatarRepository
 ) : ViewModel() {
     private var isAvatarCatalogLoading = false
 
@@ -45,8 +39,8 @@ class ProfileSelectionViewModel @Inject constructor(
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
-    val profilePinEnabled: StateFlow<Map<Int, Boolean>> = profileLockStateDataStore.pinEnabled
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+    private val _profilePinEnabled = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
+    val profilePinEnabled: StateFlow<Map<Int, Boolean>> = _profilePinEnabled.asStateFlow()
 
     private val _isPinOperationInProgress = MutableStateFlow(false)
     val isPinOperationInProgress: StateFlow<Boolean> = _isPinOperationInProgress.asStateFlow()
@@ -125,45 +119,30 @@ class ProfileSelectionViewModel @Inject constructor(
 
     fun refreshProfilePinStates() {
         viewModelScope.launch {
-            var attempt = 0
-            while (attempt < 4) {
-                val result = profileSyncService.pullProfileLockStates()
-                if (result.isSuccess) {
-                    profileLockStateDataStore.replaceAll(result.getOrNull().orEmpty())
-                    return@launch
+            profileSyncService.pullProfileLockStates()
+                .onSuccess { states ->
+                    _profilePinEnabled.value = states
                 }
-                Log.e(
-                    "ProfileSelectionVM",
-                    "Failed to refresh profile PIN states (attempt=$attempt)",
-                    result.exceptionOrNull()
-                )
-                attempt++
-                delay(2000L * attempt)
-            }
+                .onFailure { e ->
+                    Log.e("ProfileSelectionVM", "Failed to refresh profile PIN states", e)
+                }
         }
     }
 
     fun isProfilePinEnabled(profileId: Int): Boolean {
-        return profilePinEnabled.value[profileId] == true
+        return _profilePinEnabled.value[profileId] == true
     }
 
-    fun setProfilePin(
-        profileId: Int,
-        pin: String,
-        currentPin: String? = null,
-        onComplete: (SetProfilePinResult) -> Unit
-    ) {
+    fun setProfilePin(profileId: Int, pin: String, currentPin: String? = null, onComplete: (Boolean) -> Unit) {
         if (_isPinOperationInProgress.value) return
         viewModelScope.launch {
             _isPinOperationInProgress.value = true
-            val result = profileSyncService.setProfilePin(profileId, pin, currentPin)
-            // Server reporting CurrentPinRequired means a PIN exists remotely —
-            // reconcile local cache so we never forget it again.
-            if (result is SetProfilePinResult.Success || result is SetProfilePinResult.CurrentPinRequired) {
-                profileLockStateDataStore.setPinEnabled(profileId, true)
+            val success = profileSyncService.setProfilePin(profileId, pin, currentPin).isSuccess
+            if (success) {
+                _profilePinEnabled.value = _profilePinEnabled.value + (profileId to true)
             }
             _isPinOperationInProgress.value = false
-            onComplete(result)
+            onComplete(success)
         }
     }
 
@@ -173,7 +152,7 @@ class ProfileSelectionViewModel @Inject constructor(
             _isPinOperationInProgress.value = true
             val success = profileSyncService.clearProfilePin(profileId, currentPin).isSuccess
             if (success) {
-                profileLockStateDataStore.setPinEnabled(profileId, false)
+                _profilePinEnabled.value = _profilePinEnabled.value + (profileId to false)
             }
             _isPinOperationInProgress.value = false
             onComplete(success)

@@ -267,12 +267,6 @@ class ProfileSettingsSyncService @Inject constructor(
                 .collect { signature ->
                     if (!authManager.isAuthenticated) return@collect
                     if (applyingRemoteBlob) return@collect
-                    if (profileDataStoreFactory.corruptedFileNames.isNotEmpty()) {
-                        Log.w(TAG, "DataStore corruption detected (${profileDataStoreFactory.corruptedFileNames}) — pulling from remote instead of pushing")
-                        profileDataStoreFactory.corruptedFileNames.clear()
-                        pullCurrentProfileFromRemote()
-                        return@collect
-                    }
                     if (signature == skipNextPushSignature) {
                         skipNextPushSignature = null
                         return@collect

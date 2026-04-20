@@ -253,8 +253,7 @@ enum class PlayerPreference {
 
 enum class InternalPlayerEngine {
     EXOPLAYER,
-    MVP_PLAYER,
-    AUTO
+    MVP_PLAYER
 }
 
 /**
@@ -790,8 +789,6 @@ class PlayerSettingsDataStore @Inject constructor(
             prefs[resizeModeKey] = mode.coerceIn(0, 4)
         }
     }
-
-
 
     private fun parseSubtitleOrganizationMode(value: String?): SubtitleOrganizationMode {
         return when (value) {

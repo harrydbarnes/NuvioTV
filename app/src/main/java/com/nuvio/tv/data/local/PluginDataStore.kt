@@ -88,8 +88,7 @@ class PluginDataStore @Inject constructor(
     }
 
     suspend fun saveRepositories(repos: List<PluginRepository>) {
-            val active = profileManager.activeProfile
-            if (active != null && !active.isPrimary && active.usesPrimaryPlugins) return
+        if (profileManager.activeProfile?.usesPrimaryPlugins == true) return
         val json = moshi.adapter<List<PluginRepository>>(repoListType).toJson(repos)
         store().edit { prefs ->
             prefs[repositoriesKey] = json
@@ -97,8 +96,7 @@ class PluginDataStore @Inject constructor(
     }
 
     suspend fun addRepository(repo: PluginRepository) {
-            val active = profileManager.activeProfile
-            if (active != null && !active.isPrimary && active.usesPrimaryPlugins) return
+        if (profileManager.activeProfile?.usesPrimaryPlugins == true) return
         val current = repositories.first().toMutableList()
         current.removeAll { it.id == repo.id }
         current.add(repo)
@@ -106,8 +104,7 @@ class PluginDataStore @Inject constructor(
     }
 
     suspend fun removeRepository(repoId: String) {
-            val active = profileManager.activeProfile
-            if (active != null && !active.isPrimary && active.usesPrimaryPlugins) return
+        if (profileManager.activeProfile?.usesPrimaryPlugins == true) return
         val current = repositories.first().toMutableList()
         current.removeAll { it.id == repoId }
         saveRepositories(current)
@@ -139,8 +136,7 @@ class PluginDataStore @Inject constructor(
     }
 
     suspend fun saveScrapers(scrapers: List<ScraperInfo>) {
-            val active = profileManager.activeProfile
-            if (active != null && !active.isPrimary && active.usesPrimaryPlugins) return
+        if (profileManager.activeProfile?.usesPrimaryPlugins == true) return
         val json = moshi.adapter<List<ScraperInfo>>(scraperListType).toJson(scrapers)
         store().edit { prefs ->
             prefs[scrapersKey] = json
@@ -167,8 +163,7 @@ class PluginDataStore @Inject constructor(
     }
 
     suspend fun setPluginsEnabled(enabled: Boolean) {
-            val active = profileManager.activeProfile
-            if (active != null && !active.isPrimary && active.usesPrimaryPlugins) return
+        if (profileManager.activeProfile?.usesPrimaryPlugins == true) return
         store().edit { prefs ->
             prefs[pluginsEnabledKey] = enabled
         }

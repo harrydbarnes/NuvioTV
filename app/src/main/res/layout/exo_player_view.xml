@@ -22,11 +22,6 @@
             android:layout_height="match_parent"
             android:scaleType="fitXY" />
 
-        <FrameLayout
-            android:id="@+id/libass_overlay_container"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
         <ProgressBar
             android:id="@id/exo_buffering"
             android:layout_width="wrap_content"
@@ -50,11 +45,6 @@
             android:textColor="@color/exo_white"
             android:textSize="@dimen/exo_error_message_text_size" />
     </androidx.media3.ui.AspectRatioFrameLayout>
-
-    <FrameLayout
-        android:id="@+id/libass_overlay_container_gl"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
 
     <androidx.media3.ui.SubtitleView
         android:id="@id/exo_subtitles"

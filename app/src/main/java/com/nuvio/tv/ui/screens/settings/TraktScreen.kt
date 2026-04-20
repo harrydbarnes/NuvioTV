@@ -89,6 +89,10 @@ fun TraktSettingsContent(
     val primaryFocusRequester = remember { FocusRequester() }
     val entryFocusRequester = initialFocusRequester ?: primaryFocusRequester
 
+    LaunchedEffect(uiState.mode) {
+        entryFocusRequester.requestFocus()
+    }
+
     var showDisconnectConfirm by remember { mutableStateOf(false) }
     var showDaysCapDialog by remember { mutableStateOf(false) }
     var showUnairedNextUpDialog by remember { mutableStateOf(false) }

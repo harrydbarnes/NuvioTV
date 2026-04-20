@@ -96,7 +96,6 @@ import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaCastMember
 import com.nuvio.tv.domain.model.MetaPreview
-import com.nuvio.tv.domain.model.resolveContentLanguage
 import com.nuvio.tv.domain.model.MDBListRatings
 import com.nuvio.tv.domain.model.NextToWatch
 import com.nuvio.tv.domain.model.TraktCommentReview
@@ -408,7 +407,6 @@ fun MetaDetailsScreen(
                         season = returnFocusSeason,
                         episode = returnFocusEpisode
                     ),
-                    lastFocusedEpisodeIdBySeason = viewModel.lastFocusedEpisodeIdBySeason,
                     seasons = uiState.seasons,
                     selectedSeason = uiState.selectedSeason,
                     episodesForSeason = uiState.episodesForSeason,
@@ -456,7 +454,7 @@ fun MetaDetailsScreen(
                             null,
                             null,
                             video.runtime,
-                            meta.resolveContentLanguage()
+                            meta.language
                         )
                     },
                     onEpisodeManualPlayClick = { video ->
@@ -474,7 +472,7 @@ fun MetaDetailsScreen(
                             null,
                             null,
                             video.runtime,
-                            meta.resolveContentLanguage()
+                            meta.language
                         )
                     },
                     onPlayClick = { videoId ->
@@ -492,7 +490,7 @@ fun MetaDetailsScreen(
                             genresString,
                             yearString,
                             null,
-                            meta.resolveContentLanguage()
+                            meta.language
                         )
                     },
                     onPlayManuallyClick = { videoId ->
@@ -510,7 +508,7 @@ fun MetaDetailsScreen(
                             genresString,
                             yearString,
                             null,
-                            meta.resolveContentLanguage()
+                            meta.language
                         )
                     },
                     showManualPlayOption = effectiveAutoplayEnabled,
@@ -678,7 +676,6 @@ private fun MetaDetailsContent(
     heroBackdropUrl: String? = null,
     meta: Meta,
     detailReturnEpisodeFocusRequest: DetailReturnEpisodeFocusRequest? = null,
-    lastFocusedEpisodeIdBySeason: MutableMap<Int, String>,
     seasons: List<Int>,
     selectedSeason: Int,
     episodesForSeason: List<Video>,
@@ -1074,6 +1071,7 @@ private fun MetaDetailsContent(
     }
     var activePeopleTab by rememberSaveable(meta.id) { mutableStateOf(initialPeopleTab) }
     var seasonOptionsDialogSeason by remember { mutableStateOf<Int?>(null) }
+    val lastFocusedEpisodeIdBySeason = remember(meta.id) { mutableStateMapOf<Int, String>() }
     // Tracks whether the initial auto-scroll to the "next to play" episode has fired
     // for each season.  Until it fires we must keep passing scrollToEpisodeId even if
     // the user already focused an episode (which sets lastFocusedEpisodeIdBySeason).

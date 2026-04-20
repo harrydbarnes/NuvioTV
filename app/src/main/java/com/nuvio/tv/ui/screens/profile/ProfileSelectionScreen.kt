@@ -89,7 +89,6 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
-import com.nuvio.tv.core.sync.SetProfilePinResult
 import com.nuvio.tv.data.remote.supabase.AvatarCatalogItem
 import com.nuvio.tv.domain.model.UserProfile
 import com.nuvio.tv.ui.components.AvatarPickerGrid
@@ -144,7 +143,6 @@ private sealed interface ProfilePinOverlayState {
     data class Set(override val profile: UserProfile, val currentPin: String? = null) : ProfilePinOverlayState
     data class VerifyCurrentForChange(override val profile: UserProfile) : ProfilePinOverlayState
     data class VerifyCurrentForRemove(override val profile: UserProfile) : ProfilePinOverlayState
-    data class VerifyCurrentForDelete(override val profile: UserProfile) : ProfilePinOverlayState
 }
 
 private enum class ProfilePinEntryStage {
@@ -297,22 +295,13 @@ fun ProfileSelectionScreen(
                                     activePinOverlay.profile.id,
                                     pin,
                                     activePinOverlay.currentPin
-                                ) { result ->
-                                    when (result) {
-                                        is SetProfilePinResult.Success -> {
-                                            pinOverlayState = null
-                                            pinOverlayError = null
-                                            pinActionMessage = "PIN saved for ${activePinOverlay.profile.name}."
-                                        }
-                                        is SetProfilePinResult.CurrentPinRequired -> {
-                                            pinOverlayState = ProfilePinOverlayState.VerifyCurrentForChange(
-                                                activePinOverlay.profile
-                                            )
-                                            pinOverlayError = context.getString(R.string.profile_pin_current_required)
-                                        }
-                                        is SetProfilePinResult.Failure -> {
-                                            pinOverlayError = context.getString(R.string.profile_pin_save_error)
-                                        }
+                                ) { success ->
+                                    if (success) {
+                                        pinOverlayState = null
+                                        pinOverlayError = null
+                                        pinActionMessage = "PIN saved for ${activePinOverlay.profile.name}."
+                                    } else {
+                                        pinOverlayError = context.getString(R.string.profile_pin_save_error)
                                     }
                                 }
                             }
@@ -373,26 +362,6 @@ fun ProfileSelectionScreen(
                                         pinActionMessage = "PIN lock removed for ${activePinOverlay.profile.name}."
                                     } else {
                                         pinOverlayError = context.getString(R.string.profile_pin_incorrect)
-                                    }
-                                }
-                            }
-
-                            is ProfilePinOverlayState.VerifyCurrentForDelete -> {
-                                viewModel.verifyProfilePin(activePinOverlay.profile.id, pin) { result ->
-                                    result.onSuccess { verify ->
-                                        if (verify.unlocked) {
-                                            pinOverlayError = null
-                                            pinOverlayState = null
-                                            profileToDelete = activePinOverlay.profile
-                                        } else {
-                                            pinOverlayError = if (verify.retryAfterSeconds > 0) {
-                                                context.getString(R.string.profile_pin_locked, verify.retryAfterSeconds)
-                                            } else {
-                                                context.getString(R.string.profile_pin_incorrect)
-                                            }
-                                        }
-                                    }.onFailure {
-                                        pinOverlayError = context.getString(R.string.profile_pin_verify_error)
                                     }
                                 }
                             }
@@ -545,12 +514,7 @@ fun ProfileSelectionScreen(
                     Button(
                         onClick = {
                             longPressedProfile = null
-                            if (profilePinEnabled[profile.id] == true) {
-                                pinOverlayError = null
-                                pinOverlayState = ProfilePinOverlayState.VerifyCurrentForDelete(profile)
-                            } else {
-                                profileToDelete = profile
-                            }
+                            profileToDelete = profile
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.colors(
@@ -1672,12 +1636,8 @@ private fun ProfilePinOverlay(
 
     LaunchedEffect(pin, entryStage, isWorking) {
         if (pin.length != ProfilePinLength || isWorking) return@LaunchedEffect
-        // Clear pin before dispatching so the effect can't re-trigger with the
-        // same input after isWorking flips back to false at the end of the RPC.
         if (isSingleEntryMode) {
-            val submitted = pin
-            pin = ""
-            onSubmit(submitted)
+            onSubmit(pin)
         } else {
             if (entryStage == ProfilePinEntryStage.Create) {
                 draftPin = pin
@@ -1685,9 +1645,7 @@ private fun ProfilePinOverlay(
                 internalErrorMessage = null
                 entryStage = ProfilePinEntryStage.Confirm
             } else if (draftPin == pin) {
-                val submitted = pin
-                pin = ""
-                onSubmit(submitted)
+                onSubmit(pin)
             } else {
                 pin = ""
                 draftPin = null
@@ -1751,7 +1709,6 @@ private fun ProfilePinOverlay(
             state is ProfilePinOverlayState.Unlock -> stringResource(R.string.profile_pin_overlay_unlock_heading, state.profile.name)
             state is ProfilePinOverlayState.VerifyCurrentForChange -> stringResource(R.string.profile_pin_overlay_change_verify_heading, state.profile.name)
             state is ProfilePinOverlayState.VerifyCurrentForRemove -> stringResource(R.string.profile_pin_overlay_remove_verify_heading, state.profile.name)
-            state is ProfilePinOverlayState.VerifyCurrentForDelete -> stringResource(R.string.profile_pin_overlay_delete_verify_heading, state.profile.name)
             entryStage == ProfilePinEntryStage.Confirm -> stringResource(R.string.profile_pin_overlay_confirm_heading)
             else -> stringResource(R.string.profile_pin_overlay_set_heading, state.profile.name)
         }
@@ -1762,7 +1719,6 @@ private fun ProfilePinOverlay(
             state is ProfilePinOverlayState.Unlock -> stringResource(R.string.profile_pin_overlay_unlock_support)
             state is ProfilePinOverlayState.VerifyCurrentForChange -> stringResource(R.string.profile_pin_overlay_change_verify_support)
             state is ProfilePinOverlayState.VerifyCurrentForRemove -> stringResource(R.string.profile_pin_overlay_remove_verify_support)
-            state is ProfilePinOverlayState.VerifyCurrentForDelete -> stringResource(R.string.profile_pin_overlay_delete_verify_support)
             entryStage == ProfilePinEntryStage.Confirm -> stringResource(R.string.profile_pin_overlay_confirm_support)
             else -> stringResource(R.string.profile_pin_overlay_set_support)
         }
@@ -1820,8 +1776,7 @@ private fun ProfilePinOverlay(
 
             if (state is ProfilePinOverlayState.Unlock ||
                 state is ProfilePinOverlayState.VerifyCurrentForChange ||
-                state is ProfilePinOverlayState.VerifyCurrentForRemove ||
-                state is ProfilePinOverlayState.VerifyCurrentForDelete
+                state is ProfilePinOverlayState.VerifyCurrentForRemove
             ) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
