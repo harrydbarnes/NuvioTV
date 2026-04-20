@@ -153,7 +153,7 @@ private fun rememberSettingsSectionSpecs() = listOf(
         title = "Trakt",
         rawIconRes = R.raw.trakt_tv_glyph,
         subtitle = stringResource(R.string.settings_trakt_subtitle),
-        destination = SettingsSectionDestination.External
+        destination = SettingsSectionDestination.Inline
     ),
     SettingsSectionSpec(
         category = SettingsCategory.ABOUT,
@@ -181,7 +181,6 @@ private fun rememberSettingsSectionSpecs() = listOf(
 @Composable
 fun SettingsScreen(
     showBuiltInHeader: Boolean = true,
-    onNavigateToTrakt: () -> Unit = {},
     onNavigateToAuthQrSignIn: () -> Unit = {},
     onNavigateToManageProfiles: () -> Unit = {},
     onNavigateToSupportersContributors: () -> Unit = {},
@@ -217,7 +216,8 @@ fun SettingsScreen(
                 SettingsCategory.INTEGRATION to FocusRequester(),
                 SettingsCategory.PLAYBACK to FocusRequester(),
                 SettingsCategory.ADVANCED to FocusRequester(),
-                SettingsCategory.ABOUT to FocusRequester()
+                SettingsCategory.ABOUT to FocusRequester(),
+                SettingsCategory.TRAKT to FocusRequester()
             )
     }
     val railContainerFocusRequester = remember { FocusRequester() }
@@ -322,7 +322,6 @@ fun SettingsScreen(
                                 if (section.destination == SettingsSectionDestination.External) {
                                     when (section.category) {
                                         SettingsCategory.ACCOUNT -> onNavigateToAuthQrSignIn()
-                                        SettingsCategory.TRAKT -> onNavigateToTrakt()
                                         else -> Unit
                                     }
                                 } else {
@@ -428,7 +427,13 @@ fun SettingsScreen(
                             onNavigateToAuthQrSignIn = onNavigateToAuthQrSignIn
                         )
                         SettingsCategory.DEBUG -> DebugSettingsContent()
-                        SettingsCategory.TRAKT -> Unit
+                        SettingsCategory.TRAKT -> TraktSettingsContent(
+                            initialFocusRequester = if (allowDetailAutofocus) {
+                                contentFocusRequesters[SettingsCategory.TRAKT]
+                            } else {
+                                null
+                            }
+                        )
                     }
                 }
             }
