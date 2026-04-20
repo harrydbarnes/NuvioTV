@@ -64,6 +64,7 @@ fun AuthQrSignInScreen(
         uiState.qrLoginStatus?.contains("approved", ignoreCase = true) == true
     }
     var onboardingTransitionHandled by remember(isOnboardingMode) { mutableStateOf(false) }
+    var hasAttemptedAutoQrStart by remember { mutableStateOf(false) }
 
     BackHandler {
         viewModel.clearQrLoginSession()
@@ -78,11 +79,13 @@ fun AuthQrSignInScreen(
 
     LaunchedEffect(uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading) {
         if (
+            !hasAttemptedAutoQrStart &&
             uiState.authState !is AuthState.Loading &&
             !isSignedIn &&
             uiState.qrLoginCode.isNullOrBlank() &&
             !uiState.isLoading
         ) {
+            hasAttemptedAutoQrStart = true
             viewModel.startQrLogin()
         }
     }
