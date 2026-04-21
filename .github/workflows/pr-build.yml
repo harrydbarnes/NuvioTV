@@ -35,6 +35,11 @@ jobs:
             printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties
           fi
 
+      - name: Update version and package name
+        run: |
+          sed -i 's/variant.applicationId.set("com.nuviodebug.com")/variant.applicationId.set("com.nuvio.tv.test.harrybarnes")/g' app/build.gradle.kts
+          sed -i 's/versionName = "\(.*\)"/versionName = "\1-pr${{ github.event.pull_request.number }}"/g' app/build.gradle.kts
+
       - name: Build Debug APK
         env:
           CI_USE_DEBUG_SIGNING: true
