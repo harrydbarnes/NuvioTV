@@ -1,0 +1,47 @@
+name: PR Build APK
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Prepare local properties
+        env:
+          LOCAL_PROPERTIES_BASE64: ${{ secrets.LOCAL_PROPERTIES_BASE64 }}
+          LOCAL_DEV_PROPERTIES_BASE64: ${{ secrets.LOCAL_DEV_PROPERTIES_BASE64 }}
+        run: |
+          if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
+          fi
+          if [ -n "$LOCAL_DEV_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties
+          fi
+
+      - name: Build Debug APK
+        env:
+          CI_USE_DEBUG_SIGNING: true
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
