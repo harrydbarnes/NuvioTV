@@ -688,6 +688,33 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                 ) 
             }
         }
+        PlayerEvent.OnToggleSubtitles -> {
+            logSwitchTrace(
+                stage = "event-toggle-subtitles",
+                message = "selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}, selectedAddonSubtitle=${_uiState.value.selectedAddonSubtitle}"
+            )
+            val subtitlesActive = _uiState.value.selectedSubtitleTrackIndex != -1 || _uiState.value.selectedAddonSubtitle != null
+            if (subtitlesActive) {
+                autoSubtitleSelected = true
+                pendingAddonSubtitleLanguage = null
+                pendingAddonSubtitleTrackId = null
+                pendingAudioSelectionAfterSubtitleRefresh = null
+                resetSubtitleAutoSyncState()
+                rememberSubtitleDisabled()
+                disableSubtitles()
+                _uiState.update {
+                    it.copy(
+                        selectedAddonSubtitle = null,
+                        selectedSubtitleTrackIndex = -1
+                    )
+                }
+            } else {
+                autoSubtitleSelected = false
+                subtitleDisabledByPersistedPreference = false
+                subtitleAddonRestoredByPersistedPreference = false
+                tryAutoSelectPreferredSubtitleFromAvailableTracks()
+            }
+        }
         is PlayerEvent.OnSelectAddonSubtitle -> {
             logSwitchTrace(
                 stage = "event-select-subtitle-addon",
