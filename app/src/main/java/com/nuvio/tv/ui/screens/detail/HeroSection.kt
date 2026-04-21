@@ -587,7 +587,12 @@ private fun MetaInfoRow(
     val yearText = remember(meta.releaseInfo, meta.released, meta.type, showFullReleaseDate) {
         if (showFullReleaseDate && meta.type == ContentType.MOVIE) {
             meta.released
-                ?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() }
+                ?.let {
+                    runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull()
+                        ?: runCatching { java.time.Instant.parse(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }.getOrNull()
+                        ?: runCatching { java.time.LocalDate.parse(it) }.getOrNull()
+                        ?: runCatching { java.time.LocalDateTime.parse(it).toLocalDate() }.getOrNull()
+                }
                 ?.let { val locale = java.util.Locale.getDefault(); java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMy"), locale).format(java.util.Date(it.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli())) }
                 ?: meta.releaseInfo?.split("-")?.firstOrNull() ?: meta.releaseInfo
         } else {
