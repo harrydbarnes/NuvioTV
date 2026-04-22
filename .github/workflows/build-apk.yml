@@ -2,8 +2,6 @@ name: Build APK on PR
 
 on:
   pull_request:
-    branches:
-      - main
 
 jobs:
   build:
