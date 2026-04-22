@@ -9,10 +9,12 @@ import com.nuvio.tv.data.remote.api.TmdbImage
 import com.nuvio.tv.data.remote.api.TmdbPersonCreditCast
 import com.nuvio.tv.data.remote.api.TmdbPersonCreditCrew
 import com.nuvio.tv.data.remote.api.TmdbRecommendationResult
+import com.nuvio.tv.data.remote.api.TmdbVideoResult
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.MetaCastMember
 import com.nuvio.tv.domain.model.MetaCompany
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.domain.model.MetaTrailer
 import com.nuvio.tv.domain.model.PersonDetail
 import com.nuvio.tv.domain.model.PosterShape
 import kotlinx.coroutines.CancellationException
@@ -30,6 +32,8 @@ import javax.inject.Singleton
 
 private const val TAG = "TmdbMetadataService"
 private val TMDB_API_KEY = BuildConfig.TMDB_API_KEY
+private const val TMDB_TRAILER_FALLBACK_LANGUAGE = "en-US"
+private val YOUTUBE_VIDEO_ID_REGEX = Regex("^[a-zA-Z0-9_-]{11}$")
 
 @Singleton
 class TmdbMetadataService @Inject constructor(
@@ -129,6 +133,11 @@ class TmdbMetadataService @Inject constructor(
                 val genres = details?.genres?.mapNotNull { genre ->
                     genre.name.trim().takeIf { name -> name.isNotBlank() }
                 } ?: emptyList()
+                val trailers = fetchTmdbTrailers(
+                    tmdbId = numericId,
+                    tmdbType = tmdbType,
+                    preferredLanguage = normalizedLanguage
+                )
                 val description = details?.overview?.takeIf { it.isNotBlank() }
                 val releaseInfo = details?.releaseDate
                     ?: details?.firstAirDate
@@ -284,7 +293,8 @@ class TmdbMetadataService @Inject constructor(
                     genres.isEmpty() && description == null && backdrop == null && logo == null &&
                     poster == null && castMembers.isEmpty() && director.isEmpty() && writer.isEmpty() &&
                     releaseInfo == null && rating == null && runtime == null && countries.isNullOrEmpty() && language == null &&
-                    productionCompanies.isEmpty() && networks.isEmpty() && ageRating == null && status == null
+                    productionCompanies.isEmpty() && networks.isEmpty() && ageRating == null && status == null &&
+                    trailers.isEmpty()
                 ) {
                     return@withContext null
                 }
@@ -315,7 +325,8 @@ class TmdbMetadataService @Inject constructor(
                     collectionId = collectionId,
                     collectionName = collectionName,
                     originalTitle = originalTitle,
-                    alternativeTitles = altTitles
+                    alternativeTitles = altTitles,
+                    trailers = trailers
                 )
                 enrichmentCache[cacheKey] = enrichment
                 requestDeferred.complete(enrichment)
@@ -331,6 +342,90 @@ class TmdbMetadataService @Inject constructor(
                 enrichmentInFlight.remove(cacheKey, requestDeferred)
             }
         }
+
+    private suspend fun fetchTmdbTrailers(
+        tmdbId: Int,
+        tmdbType: String,
+        preferredLanguage: String
+    ): List<MetaTrailer> {
+        val localizedResults = when (tmdbType) {
+            "tv" -> runCatching {
+                tmdbApi.getTvVideos(tmdbId, TMDB_API_KEY, preferredLanguage).body()?.results.orEmpty()
+            }.getOrElse {
+                Log.w(TAG, "Failed to fetch localized TV trailers for $tmdbId: ${it.message}")
+                emptyList()
+            }
+
+            else -> runCatching {
+                tmdbApi.getMovieVideos(tmdbId, TMDB_API_KEY, preferredLanguage).body()?.results.orEmpty()
+            }.getOrElse {
+                Log.w(TAG, "Failed to fetch localized movie trailers for $tmdbId: ${it.message}")
+                emptyList()
+            }
+        }
+
+        val mergedResults = if (
+            localizedResults.isNotEmpty() ||
+            preferredLanguage.equals(TMDB_TRAILER_FALLBACK_LANGUAGE, ignoreCase = true)
+        ) {
+            localizedResults
+        } else {
+            val fallbackResults = when (tmdbType) {
+                "tv" -> runCatching {
+                    tmdbApi.getTvVideos(tmdbId, TMDB_API_KEY, TMDB_TRAILER_FALLBACK_LANGUAGE)
+                        .body()?.results.orEmpty()
+                }.getOrElse {
+                    Log.w(TAG, "Failed to fetch fallback TV trailers for $tmdbId: ${it.message}")
+                    emptyList()
+                }
+
+                else -> runCatching {
+                    tmdbApi.getMovieVideos(tmdbId, TMDB_API_KEY, TMDB_TRAILER_FALLBACK_LANGUAGE)
+                        .body()?.results.orEmpty()
+                }.getOrElse {
+                    Log.w(TAG, "Failed to fetch fallback movie trailers for $tmdbId: ${it.message}")
+                    emptyList()
+                }
+            }
+            localizedResults + fallbackResults
+        }
+
+        return rankTmdbTrailers(mergedResults)
+            .mapNotNull { video ->
+                val ytId = video.key?.trim()?.takeIf { YOUTUBE_VIDEO_ID_REGEX.matches(it) } ?: return@mapNotNull null
+                MetaTrailer(
+                    source = "TMDB",
+                    type = video.type?.takeIf(String::isNotBlank),
+                    name = video.name?.takeIf(String::isNotBlank),
+                    ytId = ytId,
+                    lang = video.iso6391?.takeIf(String::isNotBlank)
+                )
+            }
+            .distinctBy { it.ytId }
+    }
+
+    private fun rankTmdbTrailers(results: List<TmdbVideoResult>): List<TmdbVideoResult> {
+        fun typePriority(type: String?): Int = when (type?.trim()?.lowercase(Locale.US)) {
+            "trailer" -> 0
+            "teaser" -> 1
+            "clip" -> 2
+            "featurette" -> 3
+            else -> 4
+        }
+
+        return results
+            .asSequence()
+            .filter { video ->
+                video.site.equals("YouTube", ignoreCase = true) &&
+                    !video.key.isNullOrBlank()
+            }
+            .sortedWith(
+                compareBy<TmdbVideoResult> { typePriority(it.type) }
+                    .thenByDescending { it.official == true }
+                    .thenByDescending { it.publishedAt.orEmpty() }
+            )
+            .toList()
+    }
 
     suspend fun fetchEpisodeEnrichment(
         tmdbId: String,
@@ -1101,8 +1196,24 @@ private data class Quintuple<A, B, C, D, E>(
     val fifth: E
 )
 
+// Fallback regions for language codes that don't carry a region tag (e.g. "fr"
+// instead of "fr-FR"). Without this, non-hyphenated locales fall straight through
+// to the US/GB defaults in preferredRegions and users see American ratings.
+private val LANGUAGE_DEFAULT_REGION: Map<String, String> = mapOf(
+    "ar" to "SA", "bg" to "BG", "bs" to "BA", "cs" to "CZ", "da" to "DK",
+    "de" to "DE", "el" to "GR", "es" to "ES", "et" to "EE", "fi" to "FI",
+    "fr" to "FR", "he" to "IL", "hi" to "IN", "hr" to "HR", "hu" to "HU",
+    "id" to "ID", "it" to "IT", "ja" to "JP", "ko" to "KR", "lt" to "LT",
+    "lv" to "LV", "nl" to "NL", "no" to "NO", "pl" to "PL", "pt" to "PT",
+    "ro" to "RO", "ru" to "RU", "sk" to "SK", "sl" to "SI", "sr" to "RS",
+    "sv" to "SE", "th" to "TH", "tr" to "TR", "uk" to "UA", "vi" to "VN",
+    "zh" to "CN"
+)
+
 private fun preferredRegions(normalizedLanguage: String): List<String> {
+    val languageCode = normalizedLanguage.substringBefore("-").lowercase(Locale.US)
     val fromLanguage = normalizedLanguage.substringAfter("-", "").uppercase(Locale.US).takeIf { it.length == 2 }
+        ?: LANGUAGE_DEFAULT_REGION[languageCode]
     return buildList {
         if (!fromLanguage.isNullOrBlank()) add(fromLanguage)
         add("US")
@@ -1170,7 +1281,8 @@ data class TmdbEnrichment(
     val collectionId: Int?,
     val collectionName: String?,
     val originalTitle: String? = null,
-    val alternativeTitles: List<String> = emptyList()
+    val alternativeTitles: List<String> = emptyList(),
+    val trailers: List<MetaTrailer> = emptyList()
 )
 
 data class TmdbEpisodeEnrichment(
