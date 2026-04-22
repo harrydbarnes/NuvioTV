@@ -27,6 +27,10 @@ val devProperties = Properties().apply {
 fun env(name: String): String? = providers.environmentVariable(name).orNull
 
 val useDebugReleaseSigning = env("CI_USE_DEBUG_SIGNING").equals("true", ignoreCase = true)
+val ciVersionNameSuffix = providers.gradleProperty("ciVersionNameSuffix")
+    .orNull
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
 val releaseStoreFilePath = env("NUVIO_RELEASE_STORE_FILE")
     ?: localProperties.getProperty("NUVIO_RELEASE_STORE_FILE")
 val releaseKeyAliasValue = env("NUVIO_RELEASE_KEY_ALIAS")
@@ -46,6 +50,9 @@ android {
         targetSdk = 36
         versionCode = 56
         versionName = "0.6.5-beta"
+        ciVersionNameSuffix?.let { suffix ->
+            versionNameSuffix = "-$suffix"
+        }
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")

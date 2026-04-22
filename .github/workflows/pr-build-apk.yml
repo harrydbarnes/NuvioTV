@@ -1,0 +1,44 @@
+name: PR Build APK
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Build release APK
+        env:
+          CI_USE_DEBUG_SIGNING: "true"
+        run: ./gradlew :app:assembleRelease -PciVersionNameSuffix=harrybarnes
+
+      - name: Rename APK files with suffix
+        run: |
+          shopt -s nullglob
+          for apk in app/build/outputs/apk/release/*.apk; do
+            dir="$(dirname "$apk")"
+            name="$(basename "$apk" .apk)"
+            mv "$apk" "$dir/${name}-harrybarnes.apk"
+          done
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuviotv-apk-harrybarnes
+          path: app/build/outputs/apk/release/*harrybarnes.apk
+          if-no-files-found: error
