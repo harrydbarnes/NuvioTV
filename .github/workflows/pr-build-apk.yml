@@ -31,6 +31,7 @@ jobs:
 
       - name: Rename APK files with suffix
         run: |
+          # AGP output filenames do not reliably include versionNameSuffix.
           shopt -s nullglob
           for apk in app/build/outputs/apk/release/*.apk; do
             dir="$(dirname "$apk")"

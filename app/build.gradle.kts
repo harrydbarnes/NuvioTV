@@ -51,7 +51,7 @@ android {
         versionCode = 56
         versionName = "0.6.5-beta"
         ciVersionNameSuffix?.let { suffix ->
-            versionNameSuffix = "-$suffix"
+            versionNameSuffix = if (suffix.startsWith("-")) suffix else "-$suffix"
         }
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
