@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.text.DefaultSubtitleParserFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.session.MediaSession
@@ -262,12 +263,13 @@ internal fun PlayerRuntimeController.initializePlayer(
             ).setExtensionRendererMode(playerSettings.decoderPriority)
                 .setMapDV7ToHevc(playerSettings.mapDV7ToHevc || forceDv7ToHevc)
 
+            mediaSourceFactory.configureSubtitleParsing(
+                extractorsFactory = extractorsFactory,
+                subtitleParserFactory = DefaultSubtitleParserFactory()
+            )
+
             if (showLoadingStatus) _uiState.update { it.copy(loadingMessage = context.getString(R.string.player_loading_building)) }
             val buildDefaultPlayer = {
-                mediaSourceFactory.configureSubtitleParsing(
-                    extractorsFactory = null,
-                    subtitleParserFactory = null
-                )
                 val playerDataSourceFactory = PlayerPlaybackNetworking.createDataSourceFactory(context, headers)
                 ExoPlayer.Builder(context)
                     .setTrackSelector(trackSelector!!)
@@ -846,4 +848,3 @@ private class SubtitleOffsetRenderer(
         super.render(adjustedPositionUs, elapsedRealtimeUs)
     }
 }
-

@@ -94,7 +94,7 @@ internal class PlayerMediaSourceFactory {
                 setSubtitleParserFactory(parserFactory)
             }
         }
-        val forceDefaultFactory = customExtractorsFactory != null || customSubtitleParserFactory != null
+        val forceDefaultFactory = customExtractorsFactory != null
 
         // Sidecar subtitles are more reliable through DefaultMediaSourceFactory.
         if (subtitleConfigurations.isNotEmpty()) {
@@ -104,14 +104,28 @@ internal class PlayerMediaSourceFactory {
         return when {
             isHls && !forceDefaultFactory -> HlsMediaSource.Factory(httpDataSourceFactory)
                 .setAllowChunklessPreparation(true)
+                .applySubtitleParserFactory(customSubtitleParserFactory)
                 .createMediaSource(mediaItem)
             isDash && !forceDefaultFactory -> DashMediaSource.Factory(httpDataSourceFactory)
+                .applySubtitleParserFactory(customSubtitleParserFactory)
                 .createMediaSource(mediaItem)
             else -> defaultFactory.createMediaSource(mediaItem)
         }
     }
 
     fun shutdown() = Unit
+
+    private fun HlsMediaSource.Factory.applySubtitleParserFactory(
+        subtitleParserFactory: SubtitleParser.Factory?
+    ): HlsMediaSource.Factory = apply {
+        subtitleParserFactory?.let(::setSubtitleParserFactory)
+    }
+
+    private fun DashMediaSource.Factory.applySubtitleParserFactory(
+        subtitleParserFactory: SubtitleParser.Factory?
+    ): DashMediaSource.Factory = apply {
+        subtitleParserFactory?.let(::setSubtitleParserFactory)
+    }
 
     companion object {
         private const val PROBE_TIMEOUT_MS = 4000
