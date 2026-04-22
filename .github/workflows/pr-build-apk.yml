@@ -35,7 +35,9 @@ jobs:
           for apk in app/build/outputs/apk/release/*.apk; do
             dir="$(dirname "$apk")"
             name="$(basename "$apk" .apk)"
-            mv "$apk" "$dir/${name}-${APK_SUFFIX}.apk"
+            if [[ "$name" != *"-${APK_SUFFIX}" ]]; then
+              mv "$apk" "$dir/${name}-${APK_SUFFIX}.apk"
+            fi
           done
 
       - name: Upload APK artifact
