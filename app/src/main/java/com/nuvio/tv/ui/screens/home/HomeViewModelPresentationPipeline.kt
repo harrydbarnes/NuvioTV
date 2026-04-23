@@ -194,6 +194,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                 }
                 _uiState.update {
                     it.copy(
+                        layoutPreferencesReady = true,
                         homeLayout = prefs.layout,
                         heroCatalogKeys = prefs.heroCatalogKeys,
                         heroSectionEnabled = prefs.heroSectionEnabled,
