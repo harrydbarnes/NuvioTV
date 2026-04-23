@@ -1498,13 +1498,8 @@ private fun PlayerControlsOverlay(
                     )
 
                     if (uiState.currentSeason != null && uiState.currentEpisode != null) {
-                        val seasonEpisodeCode = stringResource(
-                            R.string.season_episode_format,
-                            uiState.currentSeason,
-                            uiState.currentEpisode
-                        )
                         val episodeInfo = buildString {
-                            append(seasonEpisodeCode)
+                            append("S${uiState.currentSeason}E${uiState.currentEpisode}")
                             if (!uiState.currentEpisodeTitle.isNullOrBlank()) {
                                 append(" • ${uiState.currentEpisodeTitle}")
                             }

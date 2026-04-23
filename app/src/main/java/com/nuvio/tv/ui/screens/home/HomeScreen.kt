@@ -93,10 +93,6 @@ fun HomeScreen(
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
-    val modernPresentationReady =
-        uiState.homeLayout != HomeLayout.MODERN ||
-            uiState.modernHomePresentation.rows.isNotEmpty() ||
-            (uiState.heroSectionEnabled && hasHeroContent && !hasCatalogContent && !hasCollectionContent)
     var showHomeContentWithAnimation by rememberSaveable { mutableStateOf(false) }
     var hasShownInitialHomeContent by rememberSaveable { mutableStateOf(false) }
     // Once we've shown stable home content, never go back to loading gate.
@@ -122,14 +118,7 @@ fun HomeScreen(
         { item, addonBaseUrl -> posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl) }
     }
 
-    LaunchedEffect(
-        uiState.isLoading,
-        hasCatalogContent,
-        hasCollectionContent,
-        hasHeroContent,
-        initialCwResolved,
-        modernPresentationReady
-    ) {
+    LaunchedEffect(uiState.isLoading, hasCatalogContent, hasCollectionContent, hasHeroContent, initialCwResolved) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
         if (uiState.installedAddonsCount > 0) {
             catalogLoadingStarted = true
@@ -140,7 +129,6 @@ fun HomeScreen(
             catalogLoadingStarted &&
             !uiState.isLoading &&
             initialCwResolved &&
-            modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
             (hasCatalogContent || uiState.installedAddonsCount == 0)
         ) {
@@ -184,15 +172,6 @@ fun HomeScreen(
             hasCollectionContent
 
         when {
-            !uiState.layoutPreferencesReady -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingIndicator()
-                }
-            }
-
             uiState.isLoading && !hasAnyContent -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -275,13 +254,6 @@ fun HomeScreen(
                 // On first launch, wait for stable content before revealing home.
                 // Once released, never go back to loading (homeStableGateReleased is rememberSaveable).
                 if (!homeStableGateReleased) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingIndicator()
-                    }
-                } else if (!modernPresentationReady) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center

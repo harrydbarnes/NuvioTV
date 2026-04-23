@@ -62,8 +62,7 @@ fun CompanyLogosSection(
 
     LaunchedEffect(restoreCompanyId, restoreFocusToken) {
         if (restoreFocusToken <= 0 || restoreCompanyId == null) return@LaunchedEffect
-        val targetRequester = focusRequesters[restoreCompanyId]
-        if (targetRequester == null) return@LaunchedEffect
+        val targetRequester = focusRequesters[restoreCompanyId] ?: return@LaunchedEffect
         repeat(2) { withFrameNanos { } }
         runCatching { targetRequester.requestFocus() }
         onRestoreFocusHandled()

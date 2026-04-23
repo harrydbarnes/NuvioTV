@@ -167,18 +167,8 @@ fun NextEpisodeCardOverlay(
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    val nextEpisodeLabel = if (nextEpisode.isOtherType) {
-                        nextEpisode.title
-                    } else {
-                        val nextEpisodeCode = stringResource(
-                            R.string.season_episode_format,
-                            nextEpisode.season,
-                            nextEpisode.episode
-                        )
-                        "$nextEpisodeCode • ${nextEpisode.title}"
-                    }
                     Text(
-                        text = nextEpisodeLabel,
+                        text = "S${nextEpisode.season}E${nextEpisode.episode} • ${nextEpisode.title}",
                         color = Color.White,
                         fontSize = 14.sp,
                         maxLines = 1,

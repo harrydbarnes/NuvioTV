@@ -509,6 +509,26 @@ fun PlayerRuntimeController.hideControls() {
     _uiState.update { it.copy(showControls = false, showSeekOverlay = false, showMoreDialog = false) }
 }
 
+internal fun PlayerRuntimeController.handleDisableSubtitlesInternal() {
+    logSwitchTrace(
+        stage = "internal-disable-subtitles",
+        message = "selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
+    )
+    autoSubtitleSelected = true
+    pendingAddonSubtitleLanguage = null
+    pendingAddonSubtitleTrackId = null
+    pendingAudioSelectionAfterSubtitleRefresh = null
+    resetSubtitleAutoSyncState()
+    rememberSubtitleDisabled()
+    disableSubtitles()
+    _uiState.update {
+        it.copy(
+            selectedAddonSubtitle = null,
+            selectedSubtitleTrackIndex = -1
+        )
+    }
+}
+
 fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
     onUserInteraction()
     when (event) {
@@ -665,26 +685,14 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             }
         }
         PlayerEvent.OnDisableSubtitles -> {
-            logSwitchTrace(
-                stage = "event-disable-subtitles",
-                message = "selectedSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}"
-            )
-            autoSubtitleSelected = true
-            pendingAddonSubtitleLanguage = null
-            pendingAddonSubtitleTrackId = null
-            pendingAudioSelectionAfterSubtitleRefresh = null
-            resetSubtitleAutoSyncState()
-            rememberSubtitleDisabled()
-            disableSubtitles()
+            handleDisableSubtitlesInternal()
             _uiState.update { 
                 it.copy(
                     showSubtitleOverlay = true,
                     showSubtitleStylePanel = false,
                     showSubtitleTimingDialog = false,
                     showSubtitleDelayOverlay = false,
-                    showControls = true,
-                    selectedAddonSubtitle = null,
-                    selectedSubtitleTrackIndex = -1
+                    showControls = true
                 ) 
             }
         }
@@ -695,19 +703,7 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             )
             val subtitlesActive = _uiState.value.selectedSubtitleTrackIndex != -1 || _uiState.value.selectedAddonSubtitle != null
             if (subtitlesActive) {
-                autoSubtitleSelected = true
-                pendingAddonSubtitleLanguage = null
-                pendingAddonSubtitleTrackId = null
-                pendingAudioSelectionAfterSubtitleRefresh = null
-                resetSubtitleAutoSyncState()
-                rememberSubtitleDisabled()
-                disableSubtitles()
-                _uiState.update {
-                    it.copy(
-                        selectedAddonSubtitle = null,
-                        selectedSubtitleTrackIndex = -1
-                    )
-                }
+                handleDisableSubtitlesInternal()
             } else {
                 autoSubtitleSelected = false
                 subtitleDisabledByPersistedPreference = false
