@@ -9,7 +9,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,7 +38,12 @@ fun GlobalClockOverlay(modifier: Modifier = Modifier) {
         text = formatter.format(Date(nowMillis)),
         style = MaterialTheme.typography.headlineSmall.copy(
             fontWeight = FontWeight.Normal,
-            fontSize = 34.sp
+            fontSize = 30.sp,
+            shadow = Shadow(
+                color = Color.Black.copy(alpha = 0.6f),
+                offset = Offset(2f, 2f),
+                blurRadius = 8f
+            )
         ),
         color = Color.White.copy(alpha = 0.95f),
         modifier = modifier.padding(end = 56.dp, top = 40.dp)
