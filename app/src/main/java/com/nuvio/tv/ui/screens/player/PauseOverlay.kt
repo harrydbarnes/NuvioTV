@@ -195,7 +195,7 @@ private fun PauseMetadataView(
 
             if (!year.isNullOrBlank()) {
                 val episodeLabel = if (type in listOf("series", "tv") && season != null && episode != null) {
-                    " • " + stringResource(R.string.season_episode_format, season, episode)
+                    " • S${season}E${episode}"
                 } else {
                     ""
                 }

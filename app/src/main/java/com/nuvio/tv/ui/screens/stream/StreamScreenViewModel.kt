@@ -726,7 +726,7 @@ class StreamScreenViewModel @Inject constructor(
         )
 
         val url = playbackInfo.url
-        if (!url.isNullOrBlank() && !playbackInfo.isExternal) {
+        if (!url.isNullOrBlank()) {
             viewModelScope.launch {
                 streamLinkCacheDataStore.save(
                     contentKey = streamCacheKey,

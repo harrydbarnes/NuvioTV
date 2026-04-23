@@ -107,15 +107,6 @@ class HomeViewModel @Inject constructor(
     private val _gridFocusState = MutableStateFlow(HomeScreenFocusState())
     val gridFocusState: StateFlow<HomeScreenFocusState> = _gridFocusState.asStateFlow()
 
-    private val _scrollToTopTrigger = MutableStateFlow(0)
-    val scrollToTopTrigger: StateFlow<Int> = _scrollToTopTrigger.asStateFlow()
-
-    fun requestScrollToTop() {
-        clearFocusState()
-        _gridFocusState.value = HomeScreenFocusState()
-        _scrollToTopTrigger.value++
-    }
-
     internal val _loadingCatalogs = MutableStateFlow<Set<String>>(emptySet())
     val loadingCatalogs: StateFlow<Set<String>> = _loadingCatalogs.asStateFlow()
 
@@ -201,27 +192,25 @@ class HomeViewModel @Inject constructor(
         get() = trailerPreviewAudioUrlsState
 
     init {
+        watchedSeriesStateHolder.loadFromDisk()
+        observeLayoutPreferences()
+        observeModernHomePresentation()
+        observeExternalMetaPrefetchPreference()
+        loadHomeCatalogOrderPreference()
+        loadDisabledHomeCatalogPreference()
+        loadCustomCatalogTitles()
+        observeLibraryState()
+        observeTmdbSettings()
+        observeMdbListSettings()
+        observeBlurUnwatchedEpisodes()
+        observeMemoryOnlyVerticalScroll()
         observeStartupAuthNotice()
+        observeProgressSourceChanges()
+        loadContinueWatching()
+        observeCollections()
+        observeInstalledAddons()
+        // Clear CW state when profile changes so items don't leak between profiles.
         viewModelScope.launch {
-            profileManager.activeProfileReady.first { it }
-            watchedSeriesStateHolder.loadFromDisk()
-            observeLayoutPreferences()
-            observeModernHomePresentation()
-            observeExternalMetaPrefetchPreference()
-            loadHomeCatalogOrderPreference()
-            loadDisabledHomeCatalogPreference()
-            loadCustomCatalogTitles()
-            observeLibraryState()
-            observeTmdbSettings()
-            observeMdbListSettings()
-            observeBlurUnwatchedEpisodes()
-            observeMemoryOnlyVerticalScroll()
-            observeProgressSourceChanges()
-            loadContinueWatching()
-            observeCollections()
-            observeInstalledAddons()
-
-            // Clear CW state when profile changes so items don't leak between profiles.
             var previousProfileId = profileManager.activeProfileId.value
             profileManager.activeProfileId.collect { newId ->
                 if (newId != previousProfileId) {
@@ -238,12 +227,7 @@ class HomeViewModel @Inject constructor(
                     cwLastProcessedNextUpContentIds.clear()
                     cwEnrichedNextUpOverlay.clear()
                     cwEnrichedInProgressOverlay.clear()
-                    _uiState.update {
-                        it.copy(
-                            continueWatchingItems = emptyList(),
-                            layoutPreferencesReady = false
-                        )
-                    }
+                    _uiState.update { it.copy(continueWatchingItems = emptyList()) }
                     loadContinueWatching()
                     // Clear watched badges so they don't leak between profiles.
                     watchedSeriesStateHolder.update(emptySet())

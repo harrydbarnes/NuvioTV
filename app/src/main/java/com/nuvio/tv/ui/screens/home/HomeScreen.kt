@@ -88,17 +88,12 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val initialCwResolved by viewModel.initialCwResolved.collectAsStateWithLifecycle()
-    val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
     val effectiveAutoplayEnabled by viewModel.effectiveAutoplayEnabled.collectAsStateWithLifecycle(
         initialValue = false
     )
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
-    val modernPresentationReady =
-        uiState.homeLayout != HomeLayout.MODERN ||
-            uiState.modernHomePresentation.rows.isNotEmpty() ||
-            (uiState.heroSectionEnabled && hasHeroContent && !hasCatalogContent && !hasCollectionContent)
     var showHomeContentWithAnimation by rememberSaveable { mutableStateOf(false) }
     var hasShownInitialHomeContent by rememberSaveable { mutableStateOf(false) }
     // Once we've shown stable home content, never go back to loading gate.
@@ -124,14 +119,7 @@ fun HomeScreen(
         { item, addonBaseUrl -> posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl) }
     }
 
-    LaunchedEffect(
-        uiState.isLoading,
-        hasCatalogContent,
-        hasCollectionContent,
-        hasHeroContent,
-        initialCwResolved,
-        modernPresentationReady
-    ) {
+    LaunchedEffect(uiState.isLoading, hasCatalogContent, hasCollectionContent, hasHeroContent, initialCwResolved) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
         if (uiState.installedAddonsCount > 0) {
             catalogLoadingStarted = true
@@ -142,7 +130,6 @@ fun HomeScreen(
             catalogLoadingStarted &&
             !uiState.isLoading &&
             initialCwResolved &&
-            modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
             (hasCatalogContent || uiState.installedAddonsCount == 0)
         ) {
@@ -186,15 +173,6 @@ fun HomeScreen(
             hasCollectionContent
 
         when {
-            !uiState.layoutPreferencesReady -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LoadingIndicator()
-                }
-            }
-
             uiState.isLoading && !hasAnyContent -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -277,13 +255,6 @@ fun HomeScreen(
                 // On first launch, wait for stable content before revealing home.
                 // Once released, never go back to loading (homeStableGateReleased is rememberSaveable).
                 if (!homeStableGateReleased) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        LoadingIndicator()
-                    }
-                } else if (!modernPresentationReady) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -468,12 +439,10 @@ private fun ClassicHomeRoute(
     onCatalogItemLongPress: (MetaPreview, String) -> Unit
 ) {
     val focusState by viewModel.focusState.collectAsStateWithLifecycle()
-    val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
     ClassicHomeContent(
         uiState = uiState,
         posterCardStyle = posterCardStyle,
         focusState = focusState,
-        scrollToTopTrigger = scrollToTopTrigger,
         trailerPreviewUrls = viewModel.trailerPreviewUrls,
         trailerPreviewAudioUrls = viewModel.trailerPreviewAudioUrls,
         onNavigateToDetail = onNavigateToDetail,
@@ -516,12 +485,10 @@ private fun GridHomeRoute(
     onCatalogItemLongPress: (MetaPreview, String) -> Unit
 ) {
     val gridFocusState by viewModel.gridFocusState.collectAsStateWithLifecycle()
-    val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
     GridHomeContent(
         uiState = uiState,
         posterCardStyle = posterCardStyle,
         gridFocusState = gridFocusState,
-        scrollToTopTrigger = scrollToTopTrigger,
         onNavigateToDetail = onNavigateToDetail,
         onContinueWatchingClick = onContinueWatchingClick,
         onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning,
@@ -557,7 +524,6 @@ private fun ModernHomeRoute(
     onCatalogItemLongPress: (MetaPreview, String) -> Unit
 ) {
     val focusState by viewModel.focusState.collectAsStateWithLifecycle()
-    val scrollToTopTrigger by viewModel.scrollToTopTrigger.collectAsStateWithLifecycle()
     val enrichingItemId by viewModel.enrichingItemId.collectAsStateWithLifecycle()
     val requestTrailerPreview = remember(viewModel) {
         { itemId: String, title: String, releaseInfo: String?, apiType: String ->
@@ -587,7 +553,6 @@ private fun ModernHomeRoute(
     ModernHomeContent(
         uiState = uiState,
         focusState = focusState,
-        scrollToTopTrigger = scrollToTopTrigger,
         enrichingItemId = enrichingItemId,
         trailerPreviewUrls = viewModel.trailerPreviewUrls,
         trailerPreviewAudioUrls = viewModel.trailerPreviewAudioUrls,

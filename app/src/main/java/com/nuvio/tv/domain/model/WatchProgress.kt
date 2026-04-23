@@ -74,6 +74,12 @@ data class WatchProgress(
         }
         return position.coerceAtLeast(0L)
     }
+
+    /**
+     * Display string for the episode (e.g., "S1E2")
+     */
+    val episodeDisplayString: String?
+        get() = if (season != null && episode != null) "S${season}E${episode}" else null
 }
 
 /**
