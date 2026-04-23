@@ -1,0 +1,10 @@
+1. **Add `com.google.android.engage:engage-tv:1.0.3` and `androidx.tvprovider:tvprovider:1.0.0` dependencies** to `gradle/libs.versions.toml` and `app/build.gradle.kts`. Use `sed` to edit `app/build.gradle.kts` and `gradle/libs.versions.toml`.
+2. **Run `./gradlew app:compileDebugKotlin`** to verify that the project successfully resolves the new dependencies and compiles.
+3. **Create an `EngageService` implementation** in `app/src/main/java/com/nuvio/tv/core/engage/EngageService.kt`. Use `write_file` to create this file. It will contain functions to map `WatchProgress` entities to Engage SDK entities (using `MovieEntity`, `TvEpisodeEntity`, etc.) and push them using the Engage SDK, as well as the fallback `TvContractCompat.WatchNextPrograms` Content Provider updates for Android 9/10 using `COLUMN_POSTER_ART_URI`, `COLUMN_POSTER_ART_ASPECT_RATIO`, `COLUMN_PREVIEW_VIDEO_URI`, and `COLUMN_RELEASE_DATE`.
+4. **Use `read_file` to verify the creation of `EngageService.kt`** and run `./gradlew app:compileDebugKotlin` to ensure it compiles.
+5. **Update `app/src/main/java/com/nuvio/tv/data/repository/WatchProgressRepositoryImpl.kt`** to inject and call `EngageService` methods inside `markAsCompleted`. Use `replace_with_git_merge_diff` for the modification.
+6. **Use `read_file` to verify the changes to `WatchProgressRepositoryImpl.kt`** and run `./gradlew app:compileDebugKotlin` to ensure it compiles.
+7. **Add the required AndroidManifest.xml permissions**. Use `replace_with_git_merge_diff` to add `com.google.android.tv.permission.RECEIVE_ENGAGE_RECOMMENDATIONS` and `android.permission.RECEIVE_BOOT_COMPLETED` (for TvContract backwards compatibility sync on boot if required) and provider configurations to `app/src/main/AndroidManifest.xml`.
+8. **Use `read_file` to verify the changes to `AndroidManifest.xml`**.
+9. **Run `./gradlew app:testDebugUnitTest` and `./gradlew app:compileDebugKotlin`** to verify tests and compilation to ensure no regressions were introduced.
+10. **Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.**

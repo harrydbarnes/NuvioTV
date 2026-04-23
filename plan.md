@@ -1,0 +1,7 @@
+1. **Add `com.google.android.engage:engage-tv` and `androidx.tvprovider:tvprovider` dependencies** to `gradle/libs.versions.toml` and `app/build.gradle.kts`. This will allow us to use the Engage SDK and the fallback `TvContractCompat.WatchNextPrograms`.
+2. **Create an `EngageService` (or similar component)** that listens for watch progress updates from `WatchProgressPreferences` or `WatchProgressRepositoryImpl`. This service will map `WatchProgress` entities to Engage SDK entities (`MovieEntity`, `TvEpisodeEntity`, etc.) and push them using `EngageClient` or similar Engage API.
+3. **Configure the Worker/Background Job** to calculate watch percentage upon completion of an episode and push the next episode `TvEpisodeEntity` to the OS via Engage SDK, including the `PlatformSpecificUri` deep link to Nuvio TV.
+4. **Implement the fallback `TvContractCompat.WatchNextPrograms` Content Provider** updates for Android 9/10, using the `COLUMN_POSTER_ART_URI`, `COLUMN_POSTER_ART_ASPECT_RATIO`, `COLUMN_PREVIEW_VIDEO_URI`, and `COLUMN_RELEASE_DATE` columns as mandated.
+5. **Add the required AndroidManifest.xml permissions and service declarations** (e.g. `android.permission.READ_EPG_DATA`, `android.permission.WRITE_EPG_DATA`).
+6. **Integrate the `EngageService`** with `NuvioApplication` or `WatchProgressRepositoryImpl` to trigger publishing automatically on progress change.
+7. **Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.**
