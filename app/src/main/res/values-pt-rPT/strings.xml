@@ -430,6 +430,8 @@
     <string name="layout_collapse_sidebar_sub">Ocultar barra lateral por defeito; mostrar quando focada.</string>
     <string name="layout_modern_sidebar">Barra Lateral Moderna</string>
     <string name="layout_modern_sidebar_sub">Ativar navegação em barra lateral flutuante.</string>
+    <string name="layout_top_navigation">Barra de navegação superior</string>
+    <string name="layout_top_navigation_sub">Mova a barra lateral para o topo da tela.</string>
     <string name="layout_modern_sidebar_blur">Desfocagem da Barra Lateral Moderna</string>
     <string name="layout_modern_sidebar_blur_sub">Alternar efeito de desfocagem para superfícies da barra lateral moderna.</string>
     <string name="layout_show_hero">Mostrar Secção de Destaque</string>

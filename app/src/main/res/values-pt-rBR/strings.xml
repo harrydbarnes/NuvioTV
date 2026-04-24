@@ -539,6 +539,8 @@
     <string name="layout_collapse_sidebar_sub">Esconda o menu; exiba-o apenas ao focar.</string>
     <string name="layout_modern_sidebar">Barra lateral moderna</string>
     <string name="layout_modern_sidebar_sub">Ative a navegação lateral flutuante.</string>
+    <string name="layout_top_navigation">Barra de navegação superior</string>
+    <string name="layout_top_navigation_sub">Mova a barra lateral para o topo da tela.</string>
     <string name="layout_modern_sidebar_blur">Desfoque no menu lateral</string>
     <string name="layout_modern_sidebar_blur_sub">Ative o efeito de desfoque (blur) no menu.</string>
     <string name="layout_fullscreen_hero_backdrop">Fundo em tela cheia</string>

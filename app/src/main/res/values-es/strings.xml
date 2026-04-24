@@ -353,6 +353,8 @@
     <string name="layout_collapse_sidebar_sub">Oculta barra lateral por defecto; muestra cuando se enfoca.</string>
     <string name="layout_modern_sidebar">Barra lateral moderna</string>
     <string name="layout_modern_sidebar_sub">Habilita navegación de barra lateral flotante.</string>
+    <string name="layout_top_navigation">Barra de navegación superior</string>
+    <string name="layout_top_navigation_sub">Mueve la barra lateral a la parte superior de la pantalla.</string>
     <string name="layout_modern_sidebar_blur">Desenfoque de barra lateral moderna</string>
     <string name="layout_modern_sidebar_blur_sub">Cambia efecto de desenfoque para superficies de barra lateral moderna.</string>
     <string name="layout_show_hero">Mostrar sección de héroe</string>

@@ -453,6 +453,8 @@
     <string name="layout_collapse_sidebar_sub">Απόκρυψη πλευρικής μπάρας από προεπιλογή, εμφάνιση όταν εστιάζεται.</string>
     <string name="layout_modern_sidebar">Μοντέρνα πλευρική μπάρα</string>
     <string name="layout_modern_sidebar_sub">Ενεργοποίηση πλευρικής πλοήγησης που αιωρείται.</string>
+    <string name="layout_top_navigation">Κορυφαία γραμμή πλοήγησης</string>
+    <string name="layout_top_navigation_sub">Μετακινήστε την πλαϊνή γραμμή στο επάνω μέρος της οθόνης.</string>
     <string name="layout_modern_sidebar_blur">Θόλωμα μοντέρνας πλευρικής μπάρας</string>
     <string name="layout_modern_sidebar_blur_sub">Εναλλαγή εφέ θολώματος για τις επιφάνειες μοντέρνας πλευρικής μπάρας.</string>
     <string name="layout_fullscreen_hero_backdrop">Πλήρης οθόνη φόντου ηρωικής ενότητας</string>

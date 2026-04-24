@@ -345,6 +345,8 @@
     <string name="layout_collapse_sidebar_sub">Ukryj pasek boczny domyślnie; pokaż po skupieniu.</string>
     <string name="layout_modern_sidebar">Nowoczesny pasek boczny</string>
     <string name="layout_modern_sidebar_sub">Włącz pływającą nawigację boczną.</string>
+    <string name="layout_top_navigation">Górny pasek nawigacyjny</string>
+    <string name="layout_top_navigation_sub">Przesuń pasek boczny na górę ekranu.</string>
     <string name="layout_modern_sidebar_blur">Rozmycie nowoczesnego paska bocznego</string>
     <string name="layout_modern_sidebar_blur_sub">Przełącz efekt rozmycia dla nowoczesnych powierzchni bocznych.</string>
     <string name="layout_show_hero">Pokaż sekcję hero</string>

@@ -303,6 +303,20 @@ fun LayoutSettingsContent(
                         },
                         onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
                     )
+                    if (uiState.modernSidebarEnabled) {
+                        CompactToggleRow(
+                            title = stringResource(R.string.layout_top_navigation),
+                            subtitle = stringResource(R.string.layout_top_navigation_sub),
+                            checked = uiState.topNavigationEnabled,
+                            onToggle = {
+                                viewModel.onEvent(
+                                    LayoutSettingsEvent.SetTopNavigationEnabled(!uiState.topNavigationEnabled)
+                                )
+                            },
+                            onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
+                        )
+                    }
+
                     if (uiState.modernSidebarEnabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                         CompactToggleRow(
                             title = stringResource(R.string.layout_modern_sidebar_blur),

@@ -410,6 +410,8 @@
     <string name="layout_collapse_sidebar_sub">Dölj sidofältet som standard; visa vid fokus.</string>
     <string name="layout_modern_sidebar">Modernt sidofält</string>
     <string name="layout_modern_sidebar_sub">Aktivera flytande sidofältsnavigering.</string>
+    <string name="layout_top_navigation">Toppnavigeringsfältet</string>
+    <string name="layout_top_navigation_sub">Flytta sidofältet till toppen av skärmen.</string>
     <string name="layout_modern_sidebar_blur">Suddigt modernt sidofält</string>
     <string name="layout_modern_sidebar_blur_sub">Växla suddighetseffekt för moderna sidofältsytor.</string>
     <string name="layout_show_hero">Visa karusellsektion</string>

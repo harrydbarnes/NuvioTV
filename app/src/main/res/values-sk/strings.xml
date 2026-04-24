@@ -542,6 +542,8 @@
     <string name="layout_collapse_sidebar_sub">Skryť bočný panel predvolene; zobraziť pri zameraní.</string>
     <string name="layout_modern_sidebar">Moderný bočný panel</string>
     <string name="layout_modern_sidebar_sub">Povoliť plávajúcu bočnú navigáciu.</string>
+    <string name="layout_top_navigation">Horný navigačný panel</string>
+    <string name="layout_top_navigation_sub">Presuňte bočný panel do hornej časti obrazovky.</string>
     <string name="layout_modern_sidebar_blur">Rozmazanie bočného panelu</string>
     <string name="layout_modern_sidebar_blur_sub">Prepínať efekt rozmazania pre moderný bočný panel.</string>
     <string name="layout_fullscreen_hero_backdrop">Celostránkové pozadie hero sekcie</string>

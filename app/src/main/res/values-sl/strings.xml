@@ -513,6 +513,8 @@
     <string name="layout_collapse_sidebar_sub">Skrij stransko vrstico privzeto; prikaži ob fokusu.</string>
     <string name="layout_modern_sidebar">Moderna stranska vrstica</string>
     <string name="layout_modern_sidebar_sub">Omogoči lebdečo navigacijo v stranski vrstici.</string>
+    <string name="layout_top_navigation">Zgornja vrstica za krmarjenje</string>
+    <string name="layout_top_navigation_sub">Premaknite stransko vrstico na vrh zaslona.</string>
     <string name="layout_modern_sidebar_blur">Zameglitev moderne stranske vrstice</string>
     <string name="layout_modern_sidebar_blur_sub">Vklopi/izklopi učinek zameglitve za moderne površine stranske vrstice.</string>
     <string name="layout_fullscreen_hero_backdrop">Celozaslonsko glavno ozadje</string>

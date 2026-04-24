@@ -121,6 +121,7 @@ import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.data.remote.supabase.AvatarRepository
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
+import com.nuvio.tv.ui.components.NuvioTopBar
 import com.nuvio.tv.ui.components.NuvioScrollDefaults
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
@@ -158,7 +159,8 @@ private data class MainUiPrefs(
     val hasChosenLayout: Boolean? = null,
     val sidebarCollapsed: Boolean = false,
     val modernSidebarEnabled: Boolean = false,
-    val modernSidebarBlurPref: Boolean = false
+    val modernSidebarBlurPref: Boolean = false,
+    val topNavigationEnabled: Boolean = false
 )
 
 @AndroidEntryPoint
@@ -287,6 +289,8 @@ class MainActivity : ComponentActivity() {
                     )
                 }.combine(layoutPreferenceDataStore.modernSidebarBlurEnabled) { prefs, modernSidebarBlurPref ->
                     prefs.copy(modernSidebarBlurPref = modernSidebarBlurPref)
+                }.combine(layoutPreferenceDataStore.topNavigationEnabled) { prefs, topNavigationEnabled ->
+                    prefs.copy(topNavigationEnabled = topNavigationEnabled)
                 }
             }
             val mainUiPrefs by mainUiPrefsFlow.collectAsState(initial = MainUiPrefs(hasChosenLayout = null))
@@ -385,6 +389,7 @@ class MainActivity : ComponentActivity() {
                     val modernSidebarEnabled = mainUiPrefs.modernSidebarEnabled
                     val modernSidebarBlurEnabled =
                         mainUiPrefs.modernSidebarBlurPref && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                    val topNavigationEnabled = mainUiPrefs.topNavigationEnabled
                     val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
 
                     val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
@@ -464,7 +469,28 @@ class MainActivity : ComponentActivity() {
                     }?.route
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
-                    if (modernSidebarEnabled) {
+                    if (modernSidebarEnabled && topNavigationEnabled) {
+                        TopNavigationScaffold(
+                            navController = navController,
+                            startDestination = startDestination,
+                            currentRoute = currentRoute,
+                            rootRoutes = rootRoutes,
+                            drawerItems = drawerItems,
+                            selectedDrawerRoute = selectedDrawerRoute,
+                            hideBuiltInHeaders = true,
+                            activeProfileName = activeProfile?.name ?: "",
+                            activeProfileColorHex = activeProfile?.avatarColorHex ?: "#1E88E5",
+                            activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
+                            showProfileSelector = profiles.size > 1,
+                            onSwitchProfile = { hasSelectedProfileThisSession = false },
+                            onNavigate = { optimisticRoute = it },
+                            onExitApp = {
+                                finishAffinity()
+                                finishAndRemoveTask()
+                            }
+                        )
+                    } else if (modernSidebarEnabled) {
+
                         ModernSidebarScaffold(
                             navController = navController,
                             startDestination = startDestination,
@@ -1446,4 +1472,123 @@ private fun rememberRawSvgPainter(rawIconRes: Int): Painter {
             .size(sizePx)
             .build()
     )
+}
+
+@Composable
+private fun TopNavigationScaffold(
+    navController: NavHostController,
+    startDestination: String,
+    currentRoute: String?,
+    rootRoutes: Set<String>,
+    drawerItems: List<DrawerItem>,
+    selectedDrawerRoute: String?,
+    hideBuiltInHeaders: Boolean,
+    activeProfileName: String,
+    activeProfileColorHex: String,
+    activeProfileAvatarImageUrl: String?,
+    showProfileSelector: Boolean,
+    onSwitchProfile: () -> Unit,
+    onNavigate: (String) -> Unit,
+    onExitApp: () -> Unit
+) {
+    val showTopBar = currentRoute in rootRoutes
+    val focusManager = LocalFocusManager.current
+    val contentFocusRequester = remember { FocusRequester() }
+    val drawerItemFocusRequesters = remember(drawerItems) {
+        drawerItems.associate { item -> item.route to FocusRequester() }
+    }
+
+    var isTopBarFocused by remember { mutableStateOf(false) }
+    var pendingContentFocusTransfer by remember { mutableStateOf(false) }
+    var focusedDrawerIndex by remember { mutableStateOf(-1) }
+
+    LaunchedEffect(pendingContentFocusTransfer) {
+        if (pendingContentFocusTransfer) {
+            repeat(2) { withFrameNanos { } }
+            runCatching { contentFocusRequester.requestFocus() }
+            pendingContentFocusTransfer = false
+        }
+    }
+
+    BackHandler(enabled = currentRoute in rootRoutes && !isTopBarFocused) {
+        val targetRoute = selectedDrawerRoute ?: drawerItems.firstOrNull()?.route
+        if (targetRoute != null) {
+            drawerItemFocusRequesters[targetRoute]?.requestFocus()
+        }
+    }
+
+    BackHandler(enabled = currentRoute in rootRoutes && isTopBarFocused) {
+        onExitApp()
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (showTopBar) {
+            NuvioTopBar(
+                drawerItems = drawerItems,
+                selectedDrawerRoute = selectedDrawerRoute,
+                drawerItemFocusRequesters = drawerItemFocusRequesters,
+                onDrawerItemFocused = { index ->
+                    focusedDrawerIndex = index
+                    isTopBarFocused = true
+                },
+                onDrawerItemClick = { targetRoute ->
+                    onNavigate(targetRoute)
+                    navigateToDrawerRoute(
+                        navController = navController,
+                        currentRoute = currentRoute,
+                        targetRoute = targetRoute
+                    )
+                    pendingContentFocusTransfer = true
+                },
+                activeProfileName = activeProfileName,
+                activeProfileColorHex = activeProfileColorHex,
+                activeProfileAvatarImageUrl = activeProfileAvatarImageUrl,
+                showProfileSelector = showProfileSelector,
+                onSwitchProfile = onSwitchProfile,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { state ->
+                        isTopBarFocused = state.hasFocus
+                    }
+                    .onPreviewKeyEvent { keyEvent ->
+                        if (isTopBarFocused && keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown) {
+                            pendingContentFocusTransfer = true
+                            true
+                        } else {
+                            false
+                        }
+                    }
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f)
+                .onPreviewKeyEvent { keyEvent ->
+                    if (!isTopBarFocused && showTopBar && keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp) {
+                        val targetRoute = selectedDrawerRoute ?: drawerItems.firstOrNull()?.route
+                        if (targetRoute != null) {
+                            drawerItemFocusRequesters[targetRoute]?.requestFocus()
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+        ) {
+            CompositionLocalProvider(
+                LocalSidebarExpanded provides false,
+                LocalContentFocusRequester provides contentFocusRequester
+            ) {
+                NuvioNavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    hideBuiltInHeaders = hideBuiltInHeaders
+                )
+            }
+        }
+    }
 }

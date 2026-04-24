@@ -287,6 +287,8 @@
     <string name="layout_collapse_sidebar_sub">הסתר את סרגל הצד כברירת מחדל; הצג בעת פוקוס.</string>
     <string name="layout_modern_sidebar">סרגל צד מודרני</string>
     <string name="layout_modern_sidebar_sub">אפשר ניווט בסרגל צד צף.</string>
+    <string name="layout_top_navigation">סרגל הניווט העליון</string>
+    <string name="layout_top_navigation_sub">הזז את סרגל הצד לחלק העליון של המסך.</string>
     <string name="layout_modern_sidebar_blur">טשטוש סרגל צד מודרני</string>
     <string name="layout_modern_sidebar_blur_sub">הפעל אפקט טשטוש לשטחי סרגל הצד המודרני.</string>
     <string name="layout_show_hero">הצג אזור הירו</string>

@@ -323,6 +323,8 @@
 <string name="layout_collapse_sidebar_sub">Verberg de zijbalk standaard; toon bij focus.</string>
 <string name="layout_modern_sidebar">Moderne zijbalk</string>
 <string name="layout_modern_sidebar_sub">Schakel zwevende zijbalknavigatie in.</string>
+    <string name="layout_top_navigation">Bovenste navigatiebalk</string>
+    <string name="layout_top_navigation_sub">Verplaats de zijbalk naar de bovenkant van het scherm.</string>
 <string name="layout_modern_sidebar_blur">Vervaging moderne zijbalk</string>
 <string name="layout_modern_sidebar_blur_sub">Schakel vervagingseffect in voor moderne zijbalk.</string>
 <string name="layout_show_hero">Hero-sectie tonen</string>
