@@ -451,7 +451,11 @@
     <string name="layout_section_content_desc">Έλεγχος τι εμφανίζεται στην αρχική οθόνη και στην αναζήτηση.</string>
     <string name="layout_collapse_sidebar">Σύμπτυξη πλευρικής μπάρας</string>
     <string name="layout_collapse_sidebar_sub">Απόκρυψη πλευρικής μπάρας από προεπιλογή, εμφάνιση όταν εστιάζεται.</string>
-    <string name="layout_modern_sidebar">Μοντέρνα πλευρική μπάρα</string>
+        <string name="layout_sidebar_position">Θέση πλευρικής γραμμής</string>
+    <string name="layout_sidebar_position_sub">Επιλέξτε αν θα τοποθετήσετε την πλοήγηση αριστερά ή επάνω.</string>
+    <string name="layout_sidebar_position_left">Αριστερά</string>
+    <string name="layout_sidebar_position_top">Κορυφή</string>
+<string name="layout_modern_sidebar">Μοντέρνα πλευρική μπάρα</string>
     <string name="layout_modern_sidebar_sub">Ενεργοποίηση πλευρικής πλοήγησης που αιωρείται.</string>
     <string name="layout_modern_sidebar_blur">Θόλωμα μοντέρνας πλευρικής μπάρας</string>
     <string name="layout_modern_sidebar_blur_sub">Εναλλαγή εφέ θολώματος για τις επιφάνειες μοντέρνας πλευρικής μπάρας.</string>

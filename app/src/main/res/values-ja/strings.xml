@@ -451,7 +451,11 @@
     <string name="layout_section_content_desc">ホームと検索に表示するものを制御</string>
     <string name="layout_collapse_sidebar">サイドバーを折りたたむ</string>
     <string name="layout_collapse_sidebar_sub">デフォルトでサイドバーを非表示にし、フォーカス時に表示</string>
-    <string name="layout_modern_sidebar">モダンサイドバー</string>
+        <string name="layout_sidebar_position">サイドバーの位置</string>
+    <string name="layout_sidebar_position_sub">ナビゲーションを左側に配置するか上に配置するかを選択します。</string>
+    <string name="layout_sidebar_position_left">左</string>
+    <string name="layout_sidebar_position_top">トップ</string>
+<string name="layout_modern_sidebar">モダンサイドバー</string>
     <string name="layout_modern_sidebar_sub">フローティングサイドバーナビゲーションを有効にする</string>
     <string name="layout_modern_sidebar_blur">モダンサイドバーのぼかし</string>
     <string name="layout_modern_sidebar_blur_sub">モダンサイドバーのぼかしエフェクトを切り替え</string>

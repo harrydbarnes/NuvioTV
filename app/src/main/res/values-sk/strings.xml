@@ -270,7 +270,11 @@
     <string name="layout_section_content_desc">Ovládajte, čo sa zobrazuje na domovskej obrazovke a v hľadaní.</string>
     <string name="layout_collapse_sidebar">Skryť bočný panel</string>
     <string name="layout_collapse_sidebar_sub">Skryť bočný panel predvolene; zobraziť pri zameraní.</string>
-    <string name="layout_modern_sidebar">Moderný bočný panel</string>
+        <string name="layout_sidebar_position">Poloha bočného panela</string>
+    <string name="layout_sidebar_position_sub">Vyberte, či chcete umiestniť navigáciu vľavo alebo hore.</string>
+    <string name="layout_sidebar_position_left">Vľavo</string>
+    <string name="layout_sidebar_position_top">Hore</string>
+<string name="layout_modern_sidebar">Moderný bočný panel</string>
     <string name="layout_modern_sidebar_sub">Povoliť plávajúcu bočnú navigáciu.</string>
     <string name="layout_modern_sidebar_blur">Rozmazanie bočného panelu</string>
     <string name="layout_modern_sidebar_blur_sub">Prepínať efekt rozmazania pre moderný bočný panel.</string>

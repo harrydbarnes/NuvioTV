@@ -537,7 +537,11 @@
     <string name="layout_section_content_desc">Control what appears on home and search.</string>
     <string name="layout_collapse_sidebar">Collapse Sidebar</string>
     <string name="layout_collapse_sidebar_sub">Hide sidebar by default; show when focused.</string>
-    <string name="layout_modern_sidebar">Modern Sidebar</string>
+        <string name="layout_sidebar_position">Sidebar Position</string>
+    <string name="layout_sidebar_position_sub">Choose whether to position navigation on the left or top.</string>
+    <string name="layout_sidebar_position_left">Left</string>
+    <string name="layout_sidebar_position_top">Top</string>
+<string name="layout_modern_sidebar">Modern Sidebar</string>
     <string name="layout_modern_sidebar_sub">Enable floating sidebar navigation.</string>
     <string name="layout_modern_sidebar_blur">Modern Sidebar Blur</string>
     <string name="layout_modern_sidebar_blur_sub">Toggle blur effect for modern sidebar surfaces.</string>

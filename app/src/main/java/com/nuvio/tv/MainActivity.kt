@@ -114,6 +114,7 @@ import com.nuvio.tv.data.local.ThemeDataStore
 import com.nuvio.tv.data.repository.TraktProgressService
 import com.nuvio.tv.domain.model.AppFont
 import com.nuvio.tv.domain.model.AppTheme
+import com.nuvio.tv.domain.model.SidebarPosition
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.core.sync.ProfileSettingsSyncService
 import com.nuvio.tv.core.sync.ProfileSyncService
@@ -127,6 +128,7 @@ import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.theme.NuvioColors
 import com.nuvio.tv.ui.theme.NuvioTheme
+import com.nuvio.tv.ui.components.TopNavigationScaffold
 import com.nuvio.tv.updater.UpdateViewModel
 import com.nuvio.tv.updater.ui.UpdatePromptDialog
 import dagger.hilt.android.AndroidEntryPoint
@@ -159,7 +161,8 @@ private data class MainUiPrefs(
     val hasChosenLayout: Boolean? = null,
     val sidebarCollapsed: Boolean = false,
     val modernSidebarEnabled: Boolean = false,
-    val modernSidebarBlurPref: Boolean = false
+    val modernSidebarBlurPref: Boolean = false,
+    val sidebarPosition: SidebarPosition = SidebarPosition.LEFT
 )
 
 @AndroidEntryPoint
@@ -277,7 +280,7 @@ class MainActivity : ComponentActivity() {
                     themeDataStore.selectedFont,
                     layoutPreferenceDataStore.hasChosenLayout,
                     layoutPreferenceDataStore.sidebarCollapsedByDefault,
-                    layoutPreferenceDataStore.modernSidebarEnabled,
+                    layoutPreferenceDataStore.modernSidebarEnabled
                 ) { theme, font, hasChosenLayout, sidebarCollapsed, modernSidebarEnabled ->
                     MainUiPrefs(
                         theme = theme,
@@ -285,9 +288,12 @@ class MainActivity : ComponentActivity() {
                         hasChosenLayout = hasChosenLayout,
                         sidebarCollapsed = sidebarCollapsed,
                         modernSidebarEnabled = modernSidebarEnabled,
+                        sidebarPosition = SidebarPosition.LEFT
                     )
-                }.combine(layoutPreferenceDataStore.modernSidebarBlurEnabled) { prefs, modernSidebarBlurPref ->
-                    prefs.copy(modernSidebarBlurPref = modernSidebarBlurPref)
+                }.combine(layoutPreferenceDataStore.sidebarPosition) { prefs, position ->
+                    prefs.copy(sidebarPosition = position)
+                }.combine(layoutPreferenceDataStore.modernSidebarBlurEnabled) { prefs, blurPref ->
+                    prefs.copy(modernSidebarBlurPref = blurPref)
                 }
             }
             val mainUiPrefs by mainUiPrefsFlow.collectAsState(initial = MainUiPrefs(hasChosenLayout = null))
@@ -465,7 +471,21 @@ class MainActivity : ComponentActivity() {
                     }?.route
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
-                    if (modernSidebarEnabled) {
+                    if (mainUiPrefs.sidebarPosition == SidebarPosition.TOP) {
+                        TopNavigationScaffold(
+                            currentRoute = currentRoute,
+                            drawerItems = drawerItems,
+                            selectedDrawerRoute = selectedDrawerRoute,
+                            onNavigate = { optimisticRoute = it },
+                            contentFocusRequester = remember { FocusRequester() }
+                        ) {
+                            NuvioNavHost(
+                                navController = navController,
+                                startDestination = startDestination,
+                                hideBuiltInHeaders = false
+                            )
+                        }
+                    } else if (modernSidebarEnabled) {
                         ModernSidebarScaffold(
                             navController = navController,
                             startDestination = startDestination,

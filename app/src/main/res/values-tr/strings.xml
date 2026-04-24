@@ -531,7 +531,11 @@
     <string name="layout_fullscreen_hero_backdrop_sub">Hero arka planını tüm ekrana yayacak şekilde genişlet.</string>
     <string name="layout_collapse_sidebar">Yan Menüyü Daralt</string>
     <string name="layout_collapse_sidebar_sub">Yan menüyü varsayılan olarak gizle; odaklanıldığında göster.</string>
-    <string name="layout_modern_sidebar">Modern Yan Menü</string>
+        <string name="layout_sidebar_position">Kenar Çubuğu Konumu</string>
+    <string name="layout_sidebar_position_sub">Gezinmenin sola mı yoksa üste mi yerleştirileceğini seçin.</string>
+    <string name="layout_sidebar_position_left">Sol</string>
+    <string name="layout_sidebar_position_top">Tepe</string>
+<string name="layout_modern_sidebar">Modern Yan Menü</string>
     <string name="layout_modern_sidebar_sub">Yüzen yan menü gezinmesini etkinleştir.</string>
     <string name="layout_modern_sidebar_blur">Modern Yan Menü Bulanıklığı</string>
     <string name="layout_modern_sidebar_blur_sub">Modern yan menü yüzeyleri için bulanıklaştırma efektini değiştirin.</string>

@@ -529,7 +529,11 @@
     <string name="layout_section_content_desc">Управление тем, что отображается на главном экране и в поиске.</string>
     <string name="layout_collapse_sidebar">Сворачивать боковую панель</string>
     <string name="layout_collapse_sidebar_sub">Скрывать боковую панель по умолчанию; показывать при фокусе.</string>
-    <string name="layout_modern_sidebar">Современная боковая панель</string>
+        <string name="layout_sidebar_position">Положение боковой панели</string>
+    <string name="layout_sidebar_position_sub">Выберите, расположить ли навигацию слева или сверху.</string>
+    <string name="layout_sidebar_position_left">Левый</string>
+    <string name="layout_sidebar_position_top">Вершина</string>
+<string name="layout_modern_sidebar">Современная боковая панель</string>
     <string name="layout_modern_sidebar_sub">Включить плавающую боковую панель навигации.</string>
     <string name="layout_modern_sidebar_blur">Размытие современной боковой панели</string>
     <string name="layout_modern_sidebar_blur_sub">Переключить эффект размытия для современной боковой панели.</string>

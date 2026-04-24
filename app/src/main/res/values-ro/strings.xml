@@ -305,7 +305,11 @@
     <string name="layout_section_content_desc">Controlați ce apare pe pagina principală și în căutare.</string>
     <string name="layout_collapse_sidebar">Restrânge bara laterală</string>
     <string name="layout_collapse_sidebar_sub">Ascundeți bara laterală implicit; afișați când este focalizată.</string>
-    <string name="layout_modern_sidebar">Bară laterală modernă</string>
+        <string name="layout_sidebar_position">Poziția barei laterale</string>
+    <string name="layout_sidebar_position_sub">Alegeți dacă doriți să poziționați navigarea în stânga sau sus.</string>
+    <string name="layout_sidebar_position_left">Stânga</string>
+    <string name="layout_sidebar_position_top">Top</string>
+<string name="layout_modern_sidebar">Bară laterală modernă</string>
     <string name="layout_modern_sidebar_sub">Activați navigarea cu bară laterală plutitoare.</string>
     <string name="layout_modern_sidebar_blur">Estompare bară laterală modernă</string>
     <string name="layout_modern_sidebar_blur_sub">Comutați efectul de estompare pentru suprafețele barei laterale moderne.</string>

@@ -343,7 +343,11 @@
     <string name="layout_section_content_desc">Kontroluj co pojawia się na stronie głównej i w wyszukiwarce.</string>
     <string name="layout_collapse_sidebar">Zwiń pasek boczny</string>
     <string name="layout_collapse_sidebar_sub">Ukryj pasek boczny domyślnie; pokaż po skupieniu.</string>
-    <string name="layout_modern_sidebar">Nowoczesny pasek boczny</string>
+        <string name="layout_sidebar_position">Pozycja paska bocznego</string>
+    <string name="layout_sidebar_position_sub">Wybierz, czy chcesz umieścić nawigację po lewej czy u góry.</string>
+    <string name="layout_sidebar_position_left">Lewy</string>
+    <string name="layout_sidebar_position_top">Szczyt</string>
+<string name="layout_modern_sidebar">Nowoczesny pasek boczny</string>
     <string name="layout_modern_sidebar_sub">Włącz pływającą nawigację boczną.</string>
     <string name="layout_modern_sidebar_blur">Rozmycie nowoczesnego paska bocznego</string>
     <string name="layout_modern_sidebar_blur_sub">Przełącz efekt rozmycia dla nowoczesnych powierzchni bocznych.</string>

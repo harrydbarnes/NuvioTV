@@ -55,6 +55,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
+import com.nuvio.tv.domain.model.SidebarPosition
 import com.nuvio.tv.ui.components.ClassicLayoutPreview
 import com.nuvio.tv.ui.components.GridLayoutPreview
 import com.nuvio.tv.ui.components.ModernLayoutPreview
@@ -279,7 +280,20 @@ fun LayoutSettingsContent(
                     focusRequester = homeContentHeaderFocus,
                     onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
                 ) {
-                    if (!uiState.modernSidebarEnabled) {
+                                        CompactToggleRow(
+                        title = stringResource(R.string.layout_sidebar_position),
+                        subtitle = stringResource(R.string.layout_sidebar_position_sub),
+                        checked = uiState.sidebarPosition == SidebarPosition.TOP,
+                        onToggle = {
+                            viewModel.onEvent(
+                                LayoutSettingsEvent.SetSidebarPosition(
+                                    if (uiState.sidebarPosition == SidebarPosition.TOP) SidebarPosition.LEFT else SidebarPosition.TOP
+                                )
+                            )
+                        },
+                        onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
+                    )
+if (!uiState.modernSidebarEnabled) {
                         CompactToggleRow(
                             title = stringResource(R.string.layout_collapse_sidebar),
                             subtitle = stringResource(R.string.layout_collapse_sidebar_sub),

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
+import com.nuvio.tv.domain.model.SidebarPosition
 import com.nuvio.tv.domain.repository.AddonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ data class LayoutSettingsUiState(
     val heroCatalogKeys: List<String> = emptyList(),
     val sidebarCollapsedByDefault: Boolean = false,
     val modernSidebarEnabled: Boolean = false,
+    val sidebarPosition: SidebarPosition = SidebarPosition.LEFT,
     val modernSidebarBlurEnabled: Boolean = false,
     val modernLandscapePostersEnabled: Boolean = false,
     val modernHeroFullScreenBackdropEnabled: Boolean = false,
@@ -61,6 +63,8 @@ sealed class LayoutSettingsEvent {
     data class SetSidebarCollapsed(val collapsed: Boolean) : LayoutSettingsEvent()
     data class SetModernSidebarEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetModernSidebarBlurEnabled(val enabled: Boolean) : LayoutSettingsEvent()
+    data class SetSidebarPosition(val position: SidebarPosition) : LayoutSettingsEvent()
+
     data class SetModernLandscapePostersEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetModernHeroFullScreenBackdropEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetHeroSectionEnabled(val enabled: Boolean) : LayoutSettingsEvent()
@@ -107,6 +111,11 @@ class LayoutSettingsViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            layoutPreferenceDataStore.sidebarPosition.distinctUntilChanged().collectLatest { pos ->
+                updateUiStateIfChanged { it.copy(sidebarPosition = pos) }
+            }
+        }
         viewModelScope.launch {
             layoutPreferenceDataStore.selectedLayout.distinctUntilChanged().collectLatest { layout ->
                 updateUiStateIfChanged { it.copy(selectedLayout = layout) }
@@ -252,6 +261,11 @@ class LayoutSettingsViewModel @Inject constructor(
 
     fun onEvent(event: LayoutSettingsEvent) {
         when (event) {
+            is LayoutSettingsEvent.SetSidebarPosition -> {
+                viewModelScope.launch {
+                    layoutPreferenceDataStore.setSidebarPosition(event.position)
+                }
+            }
             is LayoutSettingsEvent.SelectLayout -> selectLayout(event.layout)
             is LayoutSettingsEvent.ToggleHeroCatalog -> toggleHeroCatalog(event.catalogKey)
             is LayoutSettingsEvent.SetSidebarCollapsed -> setSidebarCollapsed(event.collapsed)

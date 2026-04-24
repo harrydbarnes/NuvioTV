@@ -530,7 +530,11 @@
     <string name="layout_section_content_desc">Controla lo que aparece en inicio y búsqueda.</string>
     <string name="layout_collapse_sidebar">Contraer Barra Lateral</string>
     <string name="layout_collapse_sidebar_sub">Ocultar la barra lateral por defecto; mostrarla al interactuar con ella.</string>
-    <string name="layout_modern_sidebar">Barra Lateral Moderna</string>
+        <string name="layout_sidebar_position">Sidebar Position</string>
+    <string name="layout_sidebar_position_sub">Choose whether to position navigation on the left or top.</string>
+    <string name="layout_sidebar_position_left">Left</string>
+    <string name="layout_sidebar_position_top">Top</string>
+<string name="layout_modern_sidebar">Barra Lateral Moderna</string>
     <string name="layout_modern_sidebar_sub">Habilitar la navegación de la barra lateral flotante.</string>
     <string name="layout_modern_sidebar_blur">Desenfocar Barra Lateral Moderna</string>
     <string name="layout_modern_sidebar_blur_sub">Activar el efecto de desenfoque para las superficies de la barra lateral moderna.</string>

@@ -451,7 +451,11 @@
     <string name="layout_section_content_desc">Steuern Sie, was auf der Startseite und in der Suche angezeigt wird.</string>
     <string name="layout_collapse_sidebar">Seitenleiste ausblenden</string>
     <string name="layout_collapse_sidebar_sub">Seitenleiste standardmäßig ausblenden; bei Fokus anzeigen.</string>
-    <string name="layout_modern_sidebar">Moderne Seitenleiste</string>
+        <string name="layout_sidebar_position">Seitenleistenposition</string>
+    <string name="layout_sidebar_position_sub">Wählen Sie, ob die Navigation links oder oben positioniert werden soll.</string>
+    <string name="layout_sidebar_position_left">Links</string>
+    <string name="layout_sidebar_position_top">Spitze</string>
+<string name="layout_modern_sidebar">Moderne Seitenleiste</string>
     <string name="layout_modern_sidebar_sub">„Schwebende” Seitenleisten-Navigation aktivieren.</string>
     <string name="layout_modern_sidebar_blur">Moderne Seitenleiste „unscharf”</string>
     <string name="layout_modern_sidebar_blur_sub">Wechseln Sie den Unschärfeeffekt für moderne Seitenleistenoberflächen.</string>

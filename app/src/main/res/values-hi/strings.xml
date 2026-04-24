@@ -405,7 +405,11 @@
     <string name="layout_section_content_desc">होम और सर्च में क्या दिखाई देगा इसे नियंत्रित करें।</string>
     <string name="layout_collapse_sidebar">साइडबार छुपाएँ</string>
     <string name="layout_collapse_sidebar_sub">डिफ़ॉल्ट रूप से साइडबार छुपाएँ; फोकस होने पर दिखाएँ।</string>
-    <string name="layout_modern_sidebar">मॉडर्न साइडबार</string>
+        <string name="layout_sidebar_position">साइडबार स्थिति</string>
+    <string name="layout_sidebar_position_sub">चुनें कि नेविगेशन को बाईं ओर या शीर्ष पर रखना है या नहीं।</string>
+    <string name="layout_sidebar_position_left">बाएं</string>
+    <string name="layout_sidebar_position_top">शीर्ष</string>
+<string name="layout_modern_sidebar">मॉडर्न साइडबार</string>
     <string name="layout_modern_sidebar_sub">फ्लोटिंग साइडबार नेविगेशन सक्षम करें।</string>
     <string name="layout_modern_sidebar_blur">मॉडर्न साइडबार ब्लर</string>
     <string name="layout_modern_sidebar_blur_sub">मॉडर्न साइडबार सतहों के लिए ब्लर प्रभाव टॉगल करें।</string>

@@ -17,6 +17,8 @@ import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.Collection
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
+import com.nuvio.tv.domain.model.SidebarPosition
+
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -51,6 +53,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val disabledHomeCatalogKeysKey = stringPreferencesKey("disabled_home_catalog_keys")
     private val customCatalogTitlesKey = stringPreferencesKey("custom_catalog_titles")
     private val sidebarCollapsedKey = booleanPreferencesKey("sidebar_collapsed_by_default")
+    private val sidebarPositionKey = stringPreferencesKey("sidebar_position")
+
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
@@ -95,6 +99,16 @@ class LayoutPreferenceDataStore @Inject constructor(
     val hasChosenLayout: Flow<Boolean> = profileFlow { prefs ->
         prefs[hasChosenKey] ?: false
     }
+
+    val sidebarPosition: Flow<SidebarPosition> = profileFlow { prefs ->
+        val positionName = prefs[sidebarPositionKey] ?: SidebarPosition.LEFT.name
+        try {
+            SidebarPosition.valueOf(positionName)
+        } catch (e: IllegalArgumentException) {
+            SidebarPosition.LEFT
+        }
+    }
+
 
     val heroCatalogSelections: Flow<List<String>> = profileFlow { prefs ->
         val multiSelection = parseCatalogKeys(prefs[heroCatalogKeysKey])
@@ -295,6 +309,13 @@ class LayoutPreferenceDataStore @Inject constructor(
             } else {
                 prefs[disabledHomeCatalogKeysKey] = gson.toJson(normalizedKeys)
             }
+        }
+    }
+
+
+    suspend fun setSidebarPosition(position: SidebarPosition) {
+        store().edit { prefs ->
+            prefs[sidebarPositionKey] = position.name
         }
     }
 

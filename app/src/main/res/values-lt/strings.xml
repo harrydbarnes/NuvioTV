@@ -405,7 +405,11 @@
     <string name="layout_section_content_desc">Valdyti, kas rodoma pradiniame ekrane ir paieškoje.</string>
     <string name="layout_collapse_sidebar">Suskleisti šoninę juostą</string>
     <string name="layout_collapse_sidebar_sub">Slėpti šoninę juostą pagal numatytuosius nustatymus; rodyti, kai fokusuojama.</string>
-    <string name="layout_modern_sidebar">Moderni šoninė juosta</string>
+        <string name="layout_sidebar_position">Šoninės juostos padėtis</string>
+    <string name="layout_sidebar_position_sub">Pasirinkite, ar navigaciją statyti kairėje ar viršuje.</string>
+    <string name="layout_sidebar_position_left">Kairė</string>
+    <string name="layout_sidebar_position_top">Į viršų</string>
+<string name="layout_modern_sidebar">Moderni šoninė juosta</string>
     <string name="layout_modern_sidebar_sub">Įjungti plaukiojančią šoninę navigaciją.</string>
     <string name="layout_modern_sidebar_blur">Modernios šoninės juostos suliejimas</string>
     <string name="layout_modern_sidebar_blur_sub">Perjungti suliejimo efektą modernios šoninės juostos paviršiams.</string>

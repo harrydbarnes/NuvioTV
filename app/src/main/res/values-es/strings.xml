@@ -351,7 +351,11 @@
     <string name="layout_section_content_desc">Controla qué aparece en inicio y búsqueda.</string>
     <string name="layout_collapse_sidebar">Colapsar barra lateral</string>
     <string name="layout_collapse_sidebar_sub">Oculta barra lateral por defecto; muestra cuando se enfoca.</string>
-    <string name="layout_modern_sidebar">Barra lateral moderna</string>
+        <string name="layout_sidebar_position">Posición de la barra lateral</string>
+    <string name="layout_sidebar_position_sub">Elija si desea colocar la navegación a la izquierda o arriba.</string>
+    <string name="layout_sidebar_position_left">Izquierda</string>
+    <string name="layout_sidebar_position_top">Arriba</string>
+<string name="layout_modern_sidebar">Barra lateral moderna</string>
     <string name="layout_modern_sidebar_sub">Habilita navegación de barra lateral flotante.</string>
     <string name="layout_modern_sidebar_blur">Desenfoque de barra lateral moderna</string>
     <string name="layout_modern_sidebar_blur_sub">Cambia efecto de desenfoque para superficies de barra lateral moderna.</string>

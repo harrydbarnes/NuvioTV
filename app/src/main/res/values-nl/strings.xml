@@ -321,6 +321,10 @@
 <string name="layout_section_content_desc">Bepaal wat zichtbaar is op startpagina en zoeken.</string>
 <string name="layout_collapse_sidebar">Zijbalk inklappen</string>
 <string name="layout_collapse_sidebar_sub">Verberg de zijbalk standaard; toon bij focus.</string>
+    <string name="layout_sidebar_position">Zijbalkpositie</string>
+    <string name="layout_sidebar_position_sub">Kies of u de navigatie links of bovenaan wilt plaatsen.</string>
+    <string name="layout_sidebar_position_left">Links</string>
+    <string name="layout_sidebar_position_top">Bovenkant</string>
 <string name="layout_modern_sidebar">Moderne zijbalk</string>
 <string name="layout_modern_sidebar_sub">Schakel zwevende zijbalknavigatie in.</string>
 <string name="layout_modern_sidebar_blur">Vervaging moderne zijbalk</string>

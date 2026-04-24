@@ -537,7 +537,11 @@
     <string name="layout_section_content_desc">Ovládejte, co se zobrazuje na domovské obrazovce a ve vyhledávání.</string>
     <string name="layout_collapse_sidebar">Sbalit postranní panel</string>
     <string name="layout_collapse_sidebar_sub">Skrýt postranní panel ve výchozím stavu; zobrazit při zaměření.</string>
-    <string name="layout_modern_sidebar">Moderní postranní panel</string>
+        <string name="layout_sidebar_position">Poloha bočního panelu</string>
+    <string name="layout_sidebar_position_sub">Vyberte, zda chcete navigaci umístit vlevo nebo nahoře.</string>
+    <string name="layout_sidebar_position_left">Vlevo</string>
+    <string name="layout_sidebar_position_top">Nahoru</string>
+<string name="layout_modern_sidebar">Moderní postranní panel</string>
     <string name="layout_modern_sidebar_sub">Zapnout plovoucí navigaci postranního panelu.</string>
     <string name="layout_modern_sidebar_blur">Rozmazání moderního postranního panelu</string>
     <string name="layout_modern_sidebar_blur_sub">Přepnout efekt rozmazání pro plochy moderního postranního panelu.</string>

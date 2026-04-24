@@ -285,7 +285,11 @@
     <string name="layout_grid">רשת</string>
     <string name="layout_collapse_sidebar">כווץ סרגל צד</string>
     <string name="layout_collapse_sidebar_sub">הסתר את סרגל הצד כברירת מחדל; הצג בעת פוקוס.</string>
-    <string name="layout_modern_sidebar">סרגל צד מודרני</string>
+        <string name="layout_sidebar_position">מיקום סרגל הצד</string>
+    <string name="layout_sidebar_position_sub">בחר אם למקם את הניווט בצד שמאל או למעלה.</string>
+    <string name="layout_sidebar_position_left">שְׁמֹאל</string>
+    <string name="layout_sidebar_position_top">רֹאשׁ</string>
+<string name="layout_modern_sidebar">סרגל צד מודרני</string>
     <string name="layout_modern_sidebar_sub">אפשר ניווט בסרגל צד צף.</string>
     <string name="layout_modern_sidebar_blur">טשטוש סרגל צד מודרני</string>
     <string name="layout_modern_sidebar_blur_sub">הפעל אפקט טשטוש לשטחי סרגל הצד המודרני.</string>

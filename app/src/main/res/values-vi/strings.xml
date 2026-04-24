@@ -323,7 +323,11 @@
     <string name="layout_section_content_desc">Kiểm soát nội dung hiển thị trên màn hình chính và tìm kiếm.</string>
     <string name="layout_collapse_sidebar">Thu gọn thanh bên</string>
     <string name="layout_collapse_sidebar_sub">Ẩn thanh bên mặc định; hiện khi được chọn.</string>
-    <string name="layout_modern_sidebar">Thanh bên hiện đại</string>
+        <string name="layout_sidebar_position">Vị trí thanh bên</string>
+    <string name="layout_sidebar_position_sub">Chọn vị trí điều hướng ở bên trái hoặc trên cùng.</string>
+    <string name="layout_sidebar_position_left">Bên trái</string>
+    <string name="layout_sidebar_position_top">Đứng đầu</string>
+<string name="layout_modern_sidebar">Thanh bên hiện đại</string>
     <string name="layout_modern_sidebar_sub">Bật thanh điều hướng nổi.</string>
     <string name="layout_modern_sidebar_blur">Mờ thanh bên hiện đại</string>
     <string name="layout_modern_sidebar_blur_sub">Bật/tắt hiệu ứng mờ cho bề mặt thanh bên hiện đại.</string>

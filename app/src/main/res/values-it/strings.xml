@@ -451,7 +451,11 @@
     <string name="layout_section_content_desc">Controlla cosa appare nella home e nella ricerca.</string>
     <string name="layout_collapse_sidebar">Riduci barra laterale</string>
     <string name="layout_collapse_sidebar_sub">Nascondi la barra laterale per impostazione predefinita; mostrala quando è a fuoco.</string>
-    <string name="layout_modern_sidebar">Barra laterale Moderna</string>
+        <string name="layout_sidebar_position">Posizione della barra laterale</string>
+    <string name="layout_sidebar_position_sub">Scegli se posizionare la navigazione a sinistra o in alto.</string>
+    <string name="layout_sidebar_position_left">Sinistra</string>
+    <string name="layout_sidebar_position_top">Superiore</string>
+<string name="layout_modern_sidebar">Barra laterale Moderna</string>
     <string name="layout_modern_sidebar_sub">Abilita la navigazione con barra laterale fluttuante.</string>
     <string name="layout_modern_sidebar_blur">Sfocatura barra laterale Moderna</string>
     <string name="layout_modern_sidebar_blur_sub">Attiva/disattiva l\'effetto sfocatura per le superfici della barra laterale moderna.</string>

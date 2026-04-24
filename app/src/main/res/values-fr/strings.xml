@@ -530,7 +530,11 @@
     <string name="layout_section_content_desc">Contrôler ce qui apparaît sur l\'accueil et la recherche.</string>
     <string name="layout_collapse_sidebar">Réduire la barre latérale</string>
     <string name="layout_collapse_sidebar_sub">Masquer la barre latérale par défaut ; l\'afficher au focus.</string>
-    <string name="layout_modern_sidebar">Barre latérale moderne</string>
+        <string name="layout_sidebar_position">Position de la barre latérale</string>
+    <string name="layout_sidebar_position_sub">Choisissez si vous souhaitez positionner la navigation à gauche ou en haut.</string>
+    <string name="layout_sidebar_position_left">Gauche</string>
+    <string name="layout_sidebar_position_top">Haut</string>
+<string name="layout_modern_sidebar">Barre latérale moderne</string>
     <string name="layout_modern_sidebar_sub">Activer la navigation par barre latérale flottante.</string>
     <string name="layout_modern_sidebar_blur">Flou de la barre latérale moderne</string>
     <string name="layout_modern_sidebar_blur_sub">Activer l\'effet de flou pour les surfaces de la barre latérale moderne.</string>
