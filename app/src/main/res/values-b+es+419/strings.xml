@@ -1543,4 +1543,8 @@
     <string name="collections_tab_all">Todos</string>
     <string name="collections_tab_combined">Combinado</string>
 
+    <string name="layout_show_clock_home">Show Clock on Home</string>
+    <string name="layout_show_clock_home_sub">Display clock in top corner of home screen.</string>
+    <string name="layout_show_clock_details">Show Clock on Details</string>
+    <string name="layout_show_clock_details_sub">Display clock in top corner of detail pages.</string>
 </resources>

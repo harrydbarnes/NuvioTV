@@ -77,6 +77,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val hideUnreleasedContentKey = booleanPreferencesKey("hide_unreleased_content")
     private val showFullReleaseDateKey = booleanPreferencesKey("show_full_release_date")
     private val memoryOnlyVerticalScrollKey = booleanPreferencesKey("memory_only_vertical_scroll")
+    private val showClockOnHomeKey = booleanPreferencesKey("show_clock_on_home")
+    private val showClockOnDetailsKey = booleanPreferencesKey("show_clock_on_details")
 
     private fun <T> profileFlow(extract: (prefs: androidx.datastore.preferences.core.Preferences) -> T): Flow<T> =
         profileManager.activeProfileId.flatMapLatest { pid ->
@@ -237,9 +239,29 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[memoryOnlyVerticalScrollKey] ?: true
     }
 
+    val showClockOnHome: Flow<Boolean> = profileFlow { prefs ->
+        prefs[showClockOnHomeKey] ?: false
+    }
+
+    val showClockOnDetails: Flow<Boolean> = profileFlow { prefs ->
+        prefs[showClockOnDetailsKey] ?: false
+    }
+
     suspend fun setMemoryOnlyVerticalScroll(enabled: Boolean) {
         store().edit { prefs ->
             prefs[memoryOnlyVerticalScrollKey] = enabled
+        }
+    }
+
+    suspend fun setShowClockOnHome(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[showClockOnHomeKey] = enabled
+        }
+    }
+
+    suspend fun setShowClockOnDetails(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[showClockOnDetailsKey] = enabled
         }
     }
 

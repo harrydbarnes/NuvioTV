@@ -1515,4 +1515,8 @@
     <string name="collections_tab_all">Sve</string>
     <string name="collections_tab_combined">Kombinovano</string>
 
+    <string name="layout_show_clock_home">Prikaži sat na početnoj stranici</string>
+    <string name="layout_show_clock_home_sub">Prikažite sat u gornjem uglu početnog ekrana.</string>
+    <string name="layout_show_clock_details">Prikaži sat na detaljima</string>
+    <string name="layout_show_clock_details_sub">Prikaz sata u gornjem uglu stranica sa detaljima.</string>
 </resources>

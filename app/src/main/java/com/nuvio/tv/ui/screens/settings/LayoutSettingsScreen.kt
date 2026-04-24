@@ -400,6 +400,17 @@ fun LayoutSettingsContent(
                         onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
                     )
                     CompactToggleRow(
+                        title = stringResource(R.string.layout_show_clock_home),
+                        subtitle = stringResource(R.string.layout_show_clock_home_sub),
+                        checked = uiState.showClockOnHome,
+                        onToggle = {
+                            viewModel.onEvent(
+                                LayoutSettingsEvent.SetShowClockOnHome(!uiState.showClockOnHome)
+                            )
+                        },
+                        onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
+                    )
+                    CompactToggleRow(
                         title = stringResource(R.string.layout_memory_only_scroll),
                         subtitle = stringResource(R.string.layout_memory_only_scroll_sub),
                         checked = uiState.memoryOnlyVerticalScroll,
@@ -469,6 +480,17 @@ fun LayoutSettingsContent(
                         onToggle = {
                             viewModel.onEvent(
                                 LayoutSettingsEvent.SetShowFullReleaseDate(!uiState.showFullReleaseDate)
+                            )
+                        },
+                        onFocused = { focusedSection = LayoutSettingsSection.DETAIL_PAGE }
+                    )
+                    CompactToggleRow(
+                        title = stringResource(R.string.layout_show_clock_details),
+                        subtitle = stringResource(R.string.layout_show_clock_details_sub),
+                        checked = uiState.showClockOnDetails,
+                        onToggle = {
+                            viewModel.onEvent(
+                                LayoutSettingsEvent.SetShowClockOnDetails(!uiState.showClockOnDetails)
                             )
                         },
                         onFocused = { focusedSection = LayoutSettingsSection.DETAIL_PAGE }

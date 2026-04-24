@@ -41,6 +41,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.domain.model.LibraryListTab
+import com.nuvio.tv.ui.components.CornerClock
 import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.ui.components.ErrorState
@@ -371,6 +372,14 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        if (uiState.showClockOnHome) {
+            CornerClock(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 24.dp, end = 32.dp)
+            )
         }
 
         val startupAuthNotice = uiState.startupAuthNotice

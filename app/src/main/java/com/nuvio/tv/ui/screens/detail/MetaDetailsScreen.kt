@@ -93,6 +93,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import com.nuvio.tv.domain.model.ContentType
 import com.nuvio.tv.domain.model.LibraryListTab
+import com.nuvio.tv.ui.components.CornerClock
 import com.nuvio.tv.domain.model.LibrarySourceMode
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaCastMember
@@ -675,6 +676,14 @@ fun MetaDetailsScreen(
                 },
                 onSave = { viewModel.onEvent(MetaDetailsEvent.OnPickerSave) },
                 onDismiss = { viewModel.onEvent(MetaDetailsEvent.OnPickerDismiss) }
+            )
+        }
+
+        if (uiState.showClockOnDetails) {
+            CornerClock(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 24.dp, end = 32.dp)
             )
         }
 

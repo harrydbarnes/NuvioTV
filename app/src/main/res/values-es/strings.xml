@@ -1048,4 +1048,8 @@
     <string name="watchlist_removed">Eliminado de lista de deseos</string>
     <string name="playback_player_auto">Automático (Mejor para el contenido)</string>
     <string name="playback_player_auto_desc">ExoPlayer para Películas y Series · MPV para Anime</string>
+    <string name="layout_show_clock_home">Mostrar reloj en inicio</string>
+    <string name="layout_show_clock_home_sub">Muestra el reloj en la esquina superior de la pantalla de inicio.</string>
+    <string name="layout_show_clock_details">Mostrar reloj en detalles</string>
+    <string name="layout_show_clock_details_sub">Muestra el reloj en la esquina superior de las páginas de detalles.</string>
 </resources>

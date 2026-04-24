@@ -1045,4 +1045,8 @@
     <string name="sub_advanced_section">רינדור כתוביות מתקדם</string>
     <string name="playback_player_auto">אוטומטי (הטוב ביותר לתוכן)</string>
     <string name="playback_player_auto_desc">ExoPlayer לסרטים ולתוכניות טלוויזיה · MPV לאנימה</string>
+    <string name="layout_show_clock_home">הצג את השעון בבית</string>
+    <string name="layout_show_clock_home_sub">הצג שעון בפינה העליונה של מסך הבית.</string>
+    <string name="layout_show_clock_details">הצג את השעון בפרטים</string>
+    <string name="layout_show_clock_details_sub">הצג את השעון בפינה העליונה של דפי הפרטים.</string>
 </resources>

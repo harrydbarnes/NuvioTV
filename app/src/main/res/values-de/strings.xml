@@ -1159,4 +1159,8 @@
     <string name="watchlist_removed">Aus Beobachtungsliste entfernt</string>
     <string name="playback_player_auto">Automatisch (Am besten für Inhalt)</string>
     <string name="playback_player_auto_desc">ExoPlayer für Filme &amp; Serien · MPV für Anime</string>
+    <string name="layout_show_clock_home">Uhr auf Startseite anzeigen</string>
+    <string name="layout_show_clock_home_sub">Uhr in der oberen Ecke des Startbildschirms anzeigen.</string>
+    <string name="layout_show_clock_details">Uhr bei Details anzeigen</string>
+    <string name="layout_show_clock_details_sub">Uhr in der oberen Ecke der Detailseiten anzeigen.</string>
 </resources>

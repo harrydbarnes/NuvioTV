@@ -1499,4 +1499,8 @@
 
     <string name="playback_player_auto">Авто (Лучшее для контента)</string>
     <string name="playback_player_auto_desc">ExoPlayer для фильмов и сериалов · MPV для аниме</string>
+    <string name="layout_show_clock_home">Показать часы на доме</string>
+    <string name="layout_show_clock_home_sub">Отображать часы в верхнем углу главного экрана.</string>
+    <string name="layout_show_clock_details">Показать часы в деталях</string>
+    <string name="layout_show_clock_details_sub">Отображать часы в верхнем углу страниц с подробными сведениями.</string>
 </resources>

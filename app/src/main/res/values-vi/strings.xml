@@ -893,4 +893,8 @@
     <string name="update_ignore">Bỏ qua</string>
     <string name="playback_player_auto">Tự động (Tốt nhất cho nội dung)</string>
     <string name="playback_player_auto_desc">ExoPlayer cho Phim &amp; TV Show · MPV cho Anime</string>
+    <string name="layout_show_clock_home">Hiển thị đồng hồ trên trang chủ</string>
+    <string name="layout_show_clock_home_sub">Hiển thị đồng hồ ở góc trên cùng của màn hình chính.</string>
+    <string name="layout_show_clock_details">Hiển thị đồng hồ trên chi tiết</string>
+    <string name="layout_show_clock_details_sub">Hiển thị đồng hồ ở góc trên cùng của trang chi tiết.</string>
 </resources>

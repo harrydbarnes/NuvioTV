@@ -1193,4 +1193,8 @@
     <string name="watchlist_removed">Αφαιρέθηκε από τη watchlist</string>
     <string name="playback_player_auto">Αυτόματο (Καλύτερο για το περιεχόμενο)</string>
     <string name="playback_player_auto_desc">ExoPlayer για Ταινίες &amp; Σειρές · MPV για Anime</string>
+    <string name="layout_show_clock_home">Εμφάνιση ρολογιού στο σπίτι</string>
+    <string name="layout_show_clock_home_sub">Εμφάνιση ρολογιού στην επάνω γωνία της αρχικής οθόνης.</string>
+    <string name="layout_show_clock_details">Εμφάνιση ρολογιού στις λεπτομέρειες</string>
+    <string name="layout_show_clock_details_sub">Εμφάνιση του ρολογιού στην επάνω γωνία των σελίδων λεπτομερειών.</string>
 </resources>

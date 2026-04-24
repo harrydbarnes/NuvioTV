@@ -1319,4 +1319,8 @@
 
     <string name="playback_player_auto">Automatico (Il migliore per i contenuti)</string>
     <string name="playback_player_auto_desc">ExoPlayer per Film e Serie TV · MPV per gli Anime</string>
+    <string name="layout_show_clock_home">Mostra orologio in Home</string>
+    <string name="layout_show_clock_home_sub">Visualizza l\'orologio nell\'angolo superiore della schermata iniziale.</string>
+    <string name="layout_show_clock_details">Mostra orologio sui dettagli</string>
+    <string name="layout_show_clock_details_sub">Visualizza l\'orologio nell\'angolo superiore delle pagine dei dettagli.</string>
 </resources>

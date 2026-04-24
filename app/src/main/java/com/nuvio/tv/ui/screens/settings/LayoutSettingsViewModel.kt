@@ -46,7 +46,9 @@ data class LayoutSettingsUiState(
     val preferExternalMetaAddonDetail: Boolean = false,
     val hideUnreleasedContent: Boolean = false,
     val showFullReleaseDate: Boolean = true,
-    val memoryOnlyVerticalScroll: Boolean = false
+    val memoryOnlyVerticalScroll: Boolean = false,
+    val showClockOnHome: Boolean = false,
+    val showClockOnDetails: Boolean = false
 )
 
 data class CatalogInfo(
@@ -84,6 +86,8 @@ sealed class LayoutSettingsEvent {
     data class SetHideUnreleasedContent(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetShowFullReleaseDate(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetMemoryOnlyVerticalScroll(val enabled: Boolean) : LayoutSettingsEvent()
+    data class SetShowClockOnHome(val enabled: Boolean) : LayoutSettingsEvent()
+    data class SetShowClockOnDetails(val enabled: Boolean) : LayoutSettingsEvent()
     data object ResetPosterCardStyle : LayoutSettingsEvent()
 }
 
@@ -247,6 +251,16 @@ class LayoutSettingsViewModel @Inject constructor(
                 updateUiStateIfChanged { it.copy(memoryOnlyVerticalScroll = enabled) }
             }
         }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.showClockOnHome.distinctUntilChanged().collectLatest { enabled ->
+                updateUiStateIfChanged { it.copy(showClockOnHome = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            layoutPreferenceDataStore.showClockOnDetails.distinctUntilChanged().collectLatest { enabled ->
+                updateUiStateIfChanged { it.copy(showClockOnDetails = enabled) }
+            }
+        }
         loadAvailableCatalogs()
     }
 
@@ -279,6 +293,8 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetHideUnreleasedContent -> setHideUnreleasedContent(event.enabled)
             is LayoutSettingsEvent.SetShowFullReleaseDate -> setShowFullReleaseDate(event.enabled)
             is LayoutSettingsEvent.SetMemoryOnlyVerticalScroll -> setMemoryOnlyVerticalScroll(event.enabled)
+            is LayoutSettingsEvent.SetShowClockOnHome -> setShowClockOnHome(event.enabled)
+            is LayoutSettingsEvent.SetShowClockOnDetails -> setShowClockOnDetails(event.enabled)
             LayoutSettingsEvent.ResetPosterCardStyle -> resetPosterCardStyle()
         }
     }
@@ -469,6 +485,20 @@ class LayoutSettingsViewModel @Inject constructor(
         if (_uiState.value.memoryOnlyVerticalScroll == enabled) return
         viewModelScope.launch {
             layoutPreferenceDataStore.setMemoryOnlyVerticalScroll(enabled)
+        }
+    }
+
+    private fun setShowClockOnHome(enabled: Boolean) {
+        if (_uiState.value.showClockOnHome == enabled) return
+        viewModelScope.launch {
+            layoutPreferenceDataStore.setShowClockOnHome(enabled)
+        }
+    }
+
+    private fun setShowClockOnDetails(enabled: Boolean) {
+        if (_uiState.value.showClockOnDetails == enabled) return
+        viewModelScope.launch {
+            layoutPreferenceDataStore.setShowClockOnDetails(enabled)
         }
     }
 

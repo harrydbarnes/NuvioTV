@@ -1550,4 +1550,8 @@
     <string name="collections_card_subtitle">Agrupe catálogos em pastas na tela inicial</string>
     <string name="collections_tab_all">Tudo</string>
     <string name="collections_tab_combined">Combinado</string>
+    <string name="layout_show_clock_home">Mostrar relógio na página inicial</string>
+    <string name="layout_show_clock_home_sub">Exibir o relógio no canto superior da tela inicial.</string>
+    <string name="layout_show_clock_details">Mostrar relógio nos detalhes</string>
+    <string name="layout_show_clock_details_sub">Exibir o relógio no canto superior das páginas de detalhes.</string>
 </resources>

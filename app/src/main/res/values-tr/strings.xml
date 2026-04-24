@@ -1530,4 +1530,8 @@
     <string name="debug_generate_result_failed">Başarısız: %1$s</string>
     <string name="playback_player_auto">Otomatik (İçerik için en iyisi)</string>
     <string name="playback_player_auto_desc">Filmler ve Diziler için ExoPlayer · Anime için MPV</string>
+    <string name="layout_show_clock_home">Ana Sayfada Saati Göster</string>
+    <string name="layout_show_clock_home_sub">Saati ana ekranın üst köşesinde görüntüleyin.</string>
+    <string name="layout_show_clock_details">Ayrıntılarda Saati Göster</string>
+    <string name="layout_show_clock_details_sub">Ayrıntı sayfalarının üst köşesinde saati görüntüleyin.</string>
 </resources>

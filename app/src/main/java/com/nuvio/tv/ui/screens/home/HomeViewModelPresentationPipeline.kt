@@ -33,7 +33,8 @@ private data class CoreLayoutPrefs(
     val catalogAddonNameEnabled: Boolean,
     val catalogTypeSuffixEnabled: Boolean,
     val hideUnreleasedContent: Boolean,
-    val showFullReleaseDate: Boolean
+    val showFullReleaseDate: Boolean,
+    val showClockOnHome: Boolean
 )
 
 private data class FocusedBackdropPrefs(
@@ -53,6 +54,7 @@ private data class LayoutUiPrefs(
     val catalogTypeSuffixEnabled: Boolean,
     val hideUnreleasedContent: Boolean,
     val showFullReleaseDate: Boolean,
+    val showClockOnHome: Boolean,
     val modernLandscapePostersEnabled: Boolean,
     val modernHeroFullScreenBackdropEnabled: Boolean,
     val focusedBackdropExpandEnabled: Boolean,
@@ -73,8 +75,15 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
             layoutPreferenceDataStore.heroCatalogSelections,
             layoutPreferenceDataStore.heroSectionEnabled,
             layoutPreferenceDataStore.posterLabelsEnabled,
-            layoutPreferenceDataStore.catalogAddonNameEnabled
-        ) { layout, heroCatalogKeys, heroSectionEnabled, posterLabelsEnabled, catalogAddonNameEnabled ->
+            layoutPreferenceDataStore.catalogAddonNameEnabled,
+            layoutPreferenceDataStore.showClockOnHome
+        ) { args ->
+            val layout = args[0] as HomeLayout
+            val heroCatalogKeys = args[1] as List<String>
+            val heroSectionEnabled = args[2] as Boolean
+            val posterLabelsEnabled = args[3] as Boolean
+            val catalogAddonNameEnabled = args[4] as Boolean
+            val showClockOnHome = args[5] as Boolean
             CoreLayoutPrefs(
                 layout = layout,
                 heroCatalogKeys = heroCatalogKeys,
@@ -83,7 +92,8 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                 catalogAddonNameEnabled = catalogAddonNameEnabled,
                 catalogTypeSuffixEnabled = true,
                 hideUnreleasedContent = false,
-                showFullReleaseDate = true
+                showFullReleaseDate = true,
+                showClockOnHome = showClockOnHome
             )
         },
         layoutPreferenceDataStore.catalogTypeSuffixEnabled,
@@ -136,6 +146,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
             catalogTypeSuffixEnabled = corePrefs.catalogTypeSuffixEnabled,
             hideUnreleasedContent = corePrefs.hideUnreleasedContent,
             showFullReleaseDate = corePrefs.showFullReleaseDate,
+            showClockOnHome = corePrefs.showClockOnHome,
             modernLandscapePostersEnabled = false,
             modernHeroFullScreenBackdropEnabled = false,
             focusedBackdropExpandEnabled = focusedBackdropPrefs.expandEnabled,
@@ -197,6 +208,7 @@ internal fun HomeViewModel.observeLayoutPreferencesPipeline() {
                         catalogTypeSuffixEnabled = prefs.catalogTypeSuffixEnabled,
                         hideUnreleasedContent = prefs.hideUnreleasedContent,
                         showFullReleaseDate = prefs.showFullReleaseDate,
+                        showClockOnHome = prefs.showClockOnHome,
                         modernLandscapePostersEnabled = prefs.modernLandscapePostersEnabled,
                         modernHeroFullScreenBackdropEnabled = prefs.modernHeroFullScreenBackdropEnabled,
                         focusedPosterBackdropExpandEnabled = prefs.focusedBackdropExpandEnabled,

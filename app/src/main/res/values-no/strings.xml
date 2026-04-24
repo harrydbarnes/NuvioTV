@@ -1135,4 +1135,8 @@
     <string name="watchlist_removed">Fjernet fra ønskelisten</string>
     <string name="playback_player_auto">Automatisk (Best for innhold)</string>
     <string name="playback_player_auto_desc">ExoPlayer for filmer og serier · MPV for anime</string>
+    <string name="layout_show_clock_home">Vis klokke på Hjem</string>
+    <string name="layout_show_clock_home_sub">Vis klokken i øverste hjørne av startskjermen.</string>
+    <string name="layout_show_clock_details">Vis klokke på detaljer</string>
+    <string name="layout_show_clock_details_sub">Vis klokken øverst i hjørnet på detaljsidene.</string>
 </resources>

@@ -1537,4 +1537,8 @@
     <string name="collections_tab_all">Vše</string>
     <string name="collections_tab_combined">Sloučené</string>
 
+    <string name="layout_show_clock_home">Zobrazit hodiny na domovské stránce</string>
+    <string name="layout_show_clock_home_sub">Zobrazení hodin v horním rohu domovské obrazovky.</string>
+    <string name="layout_show_clock_details">Zobrazit hodiny na podrobnostech</string>
+    <string name="layout_show_clock_details_sub">Zobrazení hodin v horním rohu stránek s podrobnostmi.</string>
 </resources>

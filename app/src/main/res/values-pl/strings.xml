@@ -1550,4 +1550,8 @@
     <string name="trakt_library_source_title">Źródło biblioteki</string>
     <string name="trakt_library_source_trakt">Trakt</string>
     <string name="trakt_library_source_trakt_selected">Wybrano bibliotekę Trakt</string>
+    <string name="layout_show_clock_home">Pokaż zegar na stronie głównej</string>
+    <string name="layout_show_clock_home_sub">Wyświetl zegar w górnym rogu ekranu głównego.</string>
+    <string name="layout_show_clock_details">Pokaż zegar na szczegółach</string>
+    <string name="layout_show_clock_details_sub">Wyświetl zegar w górnym rogu stron szczegółowych.</string>
 </resources>

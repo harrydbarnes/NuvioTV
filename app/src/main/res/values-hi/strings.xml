@@ -1009,4 +1009,8 @@
     <string name="update_ignore">नज़रअंदाज़ करें</string>
     <string name="playback_player_auto">ऑटो (सामग्री के लिए सर्वश्रेष्ठ)</string>
     <string name="playback_player_auto_desc">ExoPlayer मूवीज़ और टीवी शोज़ के लिए · MPV एनीमे के लिए</string>
+    <string name="layout_show_clock_home">घर पर घड़ी दिखाएँ</string>
+    <string name="layout_show_clock_home_sub">होम स्क्रीन के शीर्ष कोने में घड़ी प्रदर्शित करें।</string>
+    <string name="layout_show_clock_details">विवरण पर घड़ी दिखाएँ</string>
+    <string name="layout_show_clock_details_sub">विवरण पृष्ठों के शीर्ष कोने में घड़ी प्रदर्शित करें।</string>
 </resources>
