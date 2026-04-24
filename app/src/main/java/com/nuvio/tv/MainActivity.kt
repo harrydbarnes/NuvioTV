@@ -472,18 +472,23 @@ class MainActivity : ComponentActivity() {
                     val selectedDrawerItem = drawerItems.firstOrNull { it.route == selectedDrawerRoute } ?: drawerItems.first()
 
                     if (mainUiPrefs.sidebarPosition == SidebarPosition.TOP) {
+                        val topNavContentFocusRequester = remember { FocusRequester() }
                         TopNavigationScaffold(
                             currentRoute = currentRoute,
                             drawerItems = drawerItems,
                             selectedDrawerRoute = selectedDrawerRoute,
                             onNavigate = { optimisticRoute = it },
-                            contentFocusRequester = remember { FocusRequester() }
+                            contentFocusRequester = topNavContentFocusRequester
                         ) {
-                            NuvioNavHost(
-                                navController = navController,
-                                startDestination = startDestination,
-                                hideBuiltInHeaders = false
-                            )
+                            CompositionLocalProvider(
+                                LocalContentFocusRequester provides topNavContentFocusRequester
+                            ) {
+                                NuvioNavHost(
+                                    navController = navController,
+                                    startDestination = startDestination,
+                                    hideBuiltInHeaders = false
+                                )
+                            }
                         }
                     } else if (modernSidebarEnabled) {
                         ModernSidebarScaffold(

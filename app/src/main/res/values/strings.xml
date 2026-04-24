@@ -537,7 +537,7 @@
     <string name="layout_section_content_desc">Control what appears on home and search.</string>
     <string name="layout_collapse_sidebar">Collapse Sidebar</string>
     <string name="layout_collapse_sidebar_sub">Hide sidebar by default; show when focused.</string>
-        <string name="layout_sidebar_position">Sidebar Position</string>
+        <string name="layout_sidebar_position">Top Sidebar Navigation</string>
     <string name="layout_sidebar_position_sub">Choose whether to position navigation on the left or top.</string>
     <string name="layout_sidebar_position_left">Left</string>
     <string name="layout_sidebar_position_top">Top</string>

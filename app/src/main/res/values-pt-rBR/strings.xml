@@ -533,7 +533,7 @@
         <string name="layout_sidebar_position">Posição da barra lateral</string>
     <string name="layout_sidebar_position_sub">Escolha se deseja posicionar a navegação à esquerda ou na parte superior.</string>
     <string name="layout_sidebar_position_left">Esquerda</string>
-    <string name="layout_sidebar_position_top">Principal</string>
+    <string name="layout_sidebar_position_top">Topo</string>
 <string name="layout_modern_sidebar">Barra lateral moderna</string>
     <string name="layout_modern_sidebar_sub">Ative a navegação lateral flutuante.</string>
     <string name="layout_modern_sidebar_blur">Desfoque no menu lateral</string>

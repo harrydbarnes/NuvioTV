@@ -34,6 +34,14 @@ fun TopNavigationScaffold(
     content: @Composable () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
+    LaunchedEffect(Unit) {
+        try {
+            contentFocusRequester.requestFocus()
+        } catch (e: Exception) {
+            // Focus might not be ready yet
+        }
+    }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()

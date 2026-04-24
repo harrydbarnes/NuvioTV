@@ -451,7 +451,7 @@
     <string name="layout_collapse_sidebar_sub">Skjul sidestolpe som standard; vis når fokusert.</string>
         <string name="layout_sidebar_position">Sidepanelposisjon</string>
     <string name="layout_sidebar_position_sub">Velg om du vil plassere navigasjonen til venstre eller øverst.</string>
-    <string name="layout_sidebar_position_left">Igjen</string>
+    <string name="layout_sidebar_position_left">Venstre</string>
     <string name="layout_sidebar_position_top">Topp</string>
 <string name="layout_modern_sidebar">Moderne sidefeltet</string>
     <string name="layout_modern_sidebar_sub">Aktiver flytende navigasjonsstripe.</string>

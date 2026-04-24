@@ -411,7 +411,7 @@
         <string name="layout_sidebar_position">Sidofältsposition</string>
     <string name="layout_sidebar_position_sub">Välj om du vill placera navigeringen till vänster eller överst.</string>
     <string name="layout_sidebar_position_left">Vänster</string>
-    <string name="layout_sidebar_position_top">Bästa</string>
+    <string name="layout_sidebar_position_top">Topp</string>
 <string name="layout_modern_sidebar">Modernt sidofält</string>
     <string name="layout_modern_sidebar_sub">Aktivera flytande sidofältsnavigering.</string>
     <string name="layout_modern_sidebar_blur">Suddigt modernt sidofält</string>
