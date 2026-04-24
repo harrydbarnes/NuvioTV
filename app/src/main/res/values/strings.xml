@@ -546,8 +546,9 @@
     <string name="layout_modern_sidebar_blur_sub">Toggle blur effect for modern sidebar surfaces.</string>
     <string name="layout_fullscreen_hero_backdrop">Fullscreen Hero Backdrop</string>
     <string name="layout_fullscreen_hero_backdrop_sub">Expand the hero backdrop to fill the entire screen.</string>
-    <string name="layout_show_hero">Show Hero Section</string>
-    <string name="layout_show_hero_sub">Display hero carousel at top of home.</string>
+    <string name="layout_select_catalogs">Select Catalogs</string>
+    <string name="layout_show_hero">Show Hero</string>
+    <string name="layout_show_hero_sub">Display a featured hero carousel at the top of Home. Choose up to 2 source catalogs below.</string>
     <string name="layout_show_discover">Show Discover in Search</string>
     <string name="layout_show_discover_sub">Show browse section when search is empty.</string>
     <string name="layout_poster_labels">Show Poster Labels</string>
