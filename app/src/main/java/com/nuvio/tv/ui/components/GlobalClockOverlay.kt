@@ -26,12 +26,12 @@ import java.util.Date
 @Composable
 fun GlobalClockOverlay(
     modifier: Modifier = Modifier,
-    paddingEnd: androidx.compose.ui.unit.Dp = 56.dp,
+    paddingEnd: androidx.compose.ui.unit.Dp = 45.dp,
     paddingTop: androidx.compose.ui.unit.Dp = 40.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = 27.sp,
-    shadowAlpha: Float = 0.6f,
-    shadowOffset: Float = 2f,
-    shadowBlurRadius: Float = 8f
+    shadowAlpha: Float = 0.8f,
+    shadowOffset: Float = 1.5f,
+    shadowBlurRadius: Float = 0f
 ) {
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val context = LocalContext.current
