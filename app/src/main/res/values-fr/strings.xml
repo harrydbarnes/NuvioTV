@@ -532,6 +532,8 @@
     <string name="layout_collapse_sidebar_sub">Masquer la barre latérale par défaut ; l\'afficher au focus.</string>
     <string name="layout_modern_sidebar">Barre latérale moderne</string>
     <string name="layout_modern_sidebar_sub">Activer la navigation par barre latérale flottante.</string>
+    <string name="layout_top_navigation">Barre de navigation supérieure</string>
+    <string name="layout_top_navigation_sub">Déplacez la barre latérale vers le haut de l’écran.</string>
     <string name="layout_modern_sidebar_blur">Flou de la barre latérale moderne</string>
     <string name="layout_modern_sidebar_blur_sub">Activer l\'effet de flou pour les surfaces de la barre latérale moderne.</string>
     <string name="layout_fullscreen_hero_backdrop">Arrière-plan en plein écran</string>

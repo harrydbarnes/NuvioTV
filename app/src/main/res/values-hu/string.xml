@@ -534,6 +534,8 @@
     <string name="layout_collapse_sidebar_sub">Oldalsáv elrejtése alapértelmezés szerint, fókusz esetén jelenik meg.</string>
     <string name="layout_modern_sidebar">Modern oldalsáv</string>
     <string name="layout_modern_sidebar_sub">Lebegő oldalsó navigáció engedélyezése.</string>
+    <string name="layout_top_navigation">Felső navigációs sáv</string>
+    <string name="layout_top_navigation_sub">Helyezze az oldalsávot a képernyő tetejére.</string>
     <string name="layout_modern_sidebar_blur">Modern oldalsáv elmosása</string>
     <string name="layout_modern_sidebar_blur_sub">Elmosási effektus (blur) az oldalsáv felületein.</string>
     <string name="layout_fullscreen_hero_backdrop">Kiemelt háttér teljes képernyőn</string>

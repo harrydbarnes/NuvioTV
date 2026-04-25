@@ -407,6 +407,8 @@
     <string name="layout_collapse_sidebar_sub">Slėpti šoninę juostą pagal numatytuosius nustatymus; rodyti, kai fokusuojama.</string>
     <string name="layout_modern_sidebar">Moderni šoninė juosta</string>
     <string name="layout_modern_sidebar_sub">Įjungti plaukiojančią šoninę navigaciją.</string>
+    <string name="layout_top_navigation">Viršutinė naršymo juosta</string>
+    <string name="layout_top_navigation_sub">Perkelkite šoninę juostą į ekrano viršų.</string>
     <string name="layout_modern_sidebar_blur">Modernios šoninės juostos suliejimas</string>
     <string name="layout_modern_sidebar_blur_sub">Perjungti suliejimo efektą modernios šoninės juostos paviršiams.</string>
     <string name="layout_show_hero">Rodyti pagrindinę (hero) dalį</string>

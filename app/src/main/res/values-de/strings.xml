@@ -453,6 +453,8 @@
     <string name="layout_collapse_sidebar_sub">Seitenleiste standardmäßig ausblenden; bei Fokus anzeigen.</string>
     <string name="layout_modern_sidebar">Moderne Seitenleiste</string>
     <string name="layout_modern_sidebar_sub">„Schwebende” Seitenleisten-Navigation aktivieren.</string>
+    <string name="layout_top_navigation">Obere Navigationsleiste</string>
+    <string name="layout_top_navigation_sub">Verschieben Sie die Seitenleiste an den oberen Bildschirmrand.</string>
     <string name="layout_modern_sidebar_blur">Moderne Seitenleiste „unscharf”</string>
     <string name="layout_modern_sidebar_blur_sub">Wechseln Sie den Unschärfeeffekt für moderne Seitenleistenoberflächen.</string>
 	<string name="layout_fullscreen_hero_backdrop">Vollbild-Hintergrund (Hero)</string>

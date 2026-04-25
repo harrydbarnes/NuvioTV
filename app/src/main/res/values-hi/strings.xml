@@ -407,6 +407,8 @@
     <string name="layout_collapse_sidebar_sub">डिफ़ॉल्ट रूप से साइडबार छुपाएँ; फोकस होने पर दिखाएँ।</string>
     <string name="layout_modern_sidebar">मॉडर्न साइडबार</string>
     <string name="layout_modern_sidebar_sub">फ्लोटिंग साइडबार नेविगेशन सक्षम करें।</string>
+    <string name="layout_top_navigation">शीर्ष नेविगेशन बार</string>
+    <string name="layout_top_navigation_sub">साइडबार को स्क्रीन के शीर्ष पर ले जाएँ.</string>
     <string name="layout_modern_sidebar_blur">मॉडर्न साइडबार ब्लर</string>
     <string name="layout_modern_sidebar_blur_sub">मॉडर्न साइडबार सतहों के लिए ब्लर प्रभाव टॉगल करें।</string>
     <string name="layout_show_hero">हीरो सेक्शन दिखाएँ</string>

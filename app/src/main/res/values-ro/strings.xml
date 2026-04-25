@@ -307,6 +307,8 @@
     <string name="layout_collapse_sidebar_sub">Ascundeți bara laterală implicit; afișați când este focalizată.</string>
     <string name="layout_modern_sidebar">Bară laterală modernă</string>
     <string name="layout_modern_sidebar_sub">Activați navigarea cu bară laterală plutitoare.</string>
+    <string name="layout_top_navigation">Bara de navigare de sus</string>
+    <string name="layout_top_navigation_sub">Mutați bara laterală în partea de sus a ecranului.</string>
     <string name="layout_modern_sidebar_blur">Estompare bară laterală modernă</string>
     <string name="layout_modern_sidebar_blur_sub">Comutați efectul de estompare pentru suprafețele barei laterale moderne.</string>
     <string name="layout_show_hero">Afișează Secțiunea Hero</string>

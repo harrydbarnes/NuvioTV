@@ -54,6 +54,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val modernSidebarEnabledKey = booleanPreferencesKey("modern_sidebar_enabled")
     private val legacyModernSidebarEnabledKey = booleanPreferencesKey("glass_sidepanel_enabled")
     private val modernSidebarBlurEnabledKey = booleanPreferencesKey("modern_sidebar_blur_enabled")
+    private val topNavigationEnabledKey = booleanPreferencesKey("top_navigation_enabled")
     private val modernLandscapePostersEnabledKey = booleanPreferencesKey("modern_landscape_posters_enabled")
     private val heroSectionEnabledKey = booleanPreferencesKey("hero_section_enabled")
     private val searchDiscoverEnabledKey = booleanPreferencesKey("search_discover_enabled")
@@ -141,6 +142,10 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     val modernSidebarBlurEnabled: Flow<Boolean> = profileFlow { prefs ->
         prefs[modernSidebarBlurEnabledKey] ?: false
+    }
+
+    val topNavigationEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[topNavigationEnabledKey] ?: false
     }
 
     val modernLandscapePostersEnabled: Flow<Boolean> = profileFlow { prefs ->
@@ -319,6 +324,12 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setModernSidebarBlurEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[modernSidebarBlurEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setTopNavigationEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[topNavigationEnabledKey] = enabled
         }
     }
 

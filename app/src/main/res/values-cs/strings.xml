@@ -539,6 +539,8 @@
     <string name="layout_collapse_sidebar_sub">Skrýt postranní panel ve výchozím stavu; zobrazit při zaměření.</string>
     <string name="layout_modern_sidebar">Moderní postranní panel</string>
     <string name="layout_modern_sidebar_sub">Zapnout plovoucí navigaci postranního panelu.</string>
+    <string name="layout_top_navigation">Horní navigační lišta</string>
+    <string name="layout_top_navigation_sub">Přesuňte postranní panel do horní části obrazovky.</string>
     <string name="layout_modern_sidebar_blur">Rozmazání moderního postranního panelu</string>
     <string name="layout_modern_sidebar_blur_sub">Přepnout efekt rozmazání pro plochy moderního postranního panelu.</string>
     <string name="layout_fullscreen_hero_backdrop">Celostránkové pozadí hero sekce</string>

@@ -453,6 +453,8 @@
     <string name="layout_collapse_sidebar_sub">デフォルトでサイドバーを非表示にし、フォーカス時に表示</string>
     <string name="layout_modern_sidebar">モダンサイドバー</string>
     <string name="layout_modern_sidebar_sub">フローティングサイドバーナビゲーションを有効にする</string>
+    <string name="layout_top_navigation">トップナビゲーションバー</string>
+    <string name="layout_top_navigation_sub">サイドバーを画面の上部に移動します。</string>
     <string name="layout_modern_sidebar_blur">モダンサイドバーのぼかし</string>
     <string name="layout_modern_sidebar_blur_sub">モダンサイドバーのぼかしエフェクトを切り替え</string>
     <string name="layout_fullscreen_hero_backdrop">フルスクリーンヒーローバックドロップ</string>
