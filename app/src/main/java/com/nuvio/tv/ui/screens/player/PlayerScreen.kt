@@ -1630,6 +1630,9 @@ private fun PlayerControlsOverlay(
                             iconPainter = customSubtitlePainter,
                             contentDescription = stringResource(R.string.cd_subtitles),
                             onClick = onShowSubtitleDialog,
+                            onLongClick = {
+                                viewModel.onEvent(PlayerEvent.OnToggleSubtitles)
+                            },
                             upFocusRequester = progressBarFocusRequester,
                             onDownKey = onHideControls,
                             onFocused = onResetHideTimer
@@ -1805,6 +1808,7 @@ private fun ControlButton(
     iconPainter: Painter? = null,
     contentDescription: String,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
     onDownKey: (() -> Unit)? = null,
@@ -1814,6 +1818,7 @@ private fun ControlButton(
 
     IconButton(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = Modifier
             .size(48.dp)
             .then(

@@ -12,6 +12,7 @@ import com.nuvio.tv.domain.model.WatchProgress
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 internal const val AUDIO_AMPLIFICATION_MIN_DB = 0
@@ -666,6 +667,79 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                 ) 
             }
         }
+
+        PlayerEvent.OnToggleSubtitles -> {
+            logSwitchTrace(
+                stage = "event-toggle-subtitles",
+                message = "currentSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex}, hasAddonSubtitle=${_uiState.value.selectedAddonSubtitle != null}"
+            )
+            val currentState = _uiState.value
+            val isSubtitleEnabled = currentState.selectedSubtitleTrackIndex != -1 || currentState.selectedAddonSubtitle != null
+            if (isSubtitleEnabled) {
+                autoSubtitleSelected = true
+                pendingAddonSubtitleLanguage = null
+                pendingAddonSubtitleTrackId = null
+                pendingAudioSelectionAfterSubtitleRefresh = null
+                resetSubtitleAutoSyncState()
+                rememberSubtitleDisabled()
+                disableSubtitles()
+                _uiState.update {
+                    it.copy(
+                        selectedAddonSubtitle = null,
+                        selectedSubtitleTrackIndex = -1
+                    )
+                }
+            } else {
+                scope.launch {
+                    val prefs = playerSettingsDataStore.playerSettings.first()
+                    val primaryLang = prefs.subtitleStyle.preferredLanguage.takeIf { it.isNotBlank() } ?: "eng"
+
+                    val tracks = currentState.subtitleTracks
+                    val addons = currentState.addonSubtitles
+
+                    // 1. Try to find an addon subtitle matching the preferred language
+                    val preferredAddon = addons.firstOrNull { it.lang.equals(primaryLang, ignoreCase = true) }
+                    if (preferredAddon != null) {
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(preferredAddon))
+                        return@launch
+                    }
+
+                    // 2. Try to find an internal track matching the preferred language
+                    val preferredInternalIdx = tracks.indexOfFirst { it.language.equals(primaryLang, ignoreCase = true) }
+                    if (preferredInternalIdx != -1) {
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(preferredInternalIdx))
+                        return@launch
+                    }
+
+                    // 3. Fallback to any English addon
+                    val engAddon = addons.firstOrNull { it.lang.equals("eng", ignoreCase = true) || it.lang.equals("en", ignoreCase = true) }
+                    if (engAddon != null) {
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(engAddon))
+                        return@launch
+                    }
+
+                    // 4. Fallback to any English internal track
+                    val engInternalIdx = tracks.indexOfFirst { it.language.equals("eng", ignoreCase = true) || it.language.equals("en", ignoreCase = true) }
+                    if (engInternalIdx != -1) {
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(engInternalIdx))
+                        return@launch
+                    }
+
+                    // 5. Fallback to the first available addon subtitle
+                    if (addons.isNotEmpty()) {
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(addons.first()))
+                        return@launch
+                    }
+
+                    // 6. Fallback to the first available internal track
+                    if (tracks.isNotEmpty()) {
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(0))
+                        return@launch
+                    }
+                }
+            }
+        }
+
         PlayerEvent.OnDisableSubtitles -> {
             logSwitchTrace(
                 stage = "event-disable-subtitles",
