@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SignalWifiOff
@@ -51,6 +53,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -152,9 +156,11 @@ private suspend fun fetchFastComUrls(): List<String> = withContext(Dispatchers.I
 }
 
 @Composable
-fun NetworkSettingsContent(
-    initialFocusRequester: FocusRequester? = null
+fun AdvancedSettingsContent(
+    initialFocusRequester: FocusRequester? = null,
+    viewModel: AdvancedSettingsViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var connectionType by remember { mutableStateOf(getConnectionType(context)) }
     var testState by remember { mutableStateOf(NetworkTestState.Idle) }
@@ -237,7 +243,11 @@ fun NetworkSettingsContent(
         }
     }
 
+    val networkListState = rememberLazyListState()
+    val performanceFocusRequester = remember { initialFocusRequester ?: FocusRequester() }
+    Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
+        state = networkListState,
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -262,14 +272,73 @@ fun NetworkSettingsContent(
             }
         }
 
-        item(key = "speed_test") {
+        item(key = "performance_header") {
+            Text(
+                text = stringResource(R.string.advanced_section_performance),
+                style = MaterialTheme.typography.titleSmall,
+                color = NuvioColors.TextTertiary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        item(key = "performance_settings") {
             SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
-                val runFocusRequester = remember { initialFocusRequester ?: FocusRequester() }
                 LaunchedEffect(Unit) {
                     if (initialFocusRequester != null) {
-                        runCatching { runFocusRequester.requestFocus() }
+                        runCatching { performanceFocusRequester.requestFocus() }
                     }
                 }
+                SettingsToggleRow(
+                    title = stringResource(R.string.advanced_fast_horizontal_navigation),
+                    subtitle = stringResource(R.string.advanced_fast_horizontal_navigation_subtitle),
+                    checked = uiState.fastHorizontalNavigationEnabled,
+                    onToggle = {
+                        viewModel.onEvent(
+                            AdvancedSettingsEvent.SetFastHorizontalNavigationEnabled(
+                                !uiState.fastHorizontalNavigationEnabled
+                            )
+                        )
+                    },
+                    modifier = Modifier.focusRequester(performanceFocusRequester)
+                )
+                SettingsToggleRow(
+                    title = stringResource(R.string.advanced_nuvio_focus_scroll),
+                    subtitle = stringResource(R.string.advanced_nuvio_focus_scroll_subtitle),
+                    checked = uiState.smoothBringIntoViewEnabled,
+                    onToggle = {
+                        viewModel.onEvent(
+                            AdvancedSettingsEvent.SetSmoothBringIntoViewEnabled(
+                                !uiState.smoothBringIntoViewEnabled
+                            )
+                        )
+                    }
+                )
+                SettingsToggleRow(
+                    title = stringResource(R.string.advanced_memory_only_vertical_scroll),
+                    subtitle = stringResource(R.string.advanced_memory_only_vertical_scroll_subtitle),
+                    checked = uiState.memoryOnlyVerticalScroll,
+                    onToggle = {
+                        viewModel.onEvent(
+                            AdvancedSettingsEvent.SetMemoryOnlyVerticalScroll(
+                                !uiState.memoryOnlyVerticalScroll
+                            )
+                        )
+                    }
+                )
+            }
+        }
+
+        item(key = "diagnostics_header") {
+            Text(
+                text = stringResource(R.string.advanced_section_diagnostics),
+                style = MaterialTheme.typography.titleSmall,
+                color = NuvioColors.TextTertiary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        item(key = "speed_test") {
+            SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
                 val isRunning = testState == NetworkTestState.TestingLatency ||
                         testState == NetworkTestState.TestingDownload
                 SettingsActionRow(
@@ -284,8 +353,7 @@ fun NetworkSettingsContent(
                             else -> R.string.network_testing_download
                         }
                     ) else null,
-                    onClick = { if (!isRunning) runSpeedTest() },
-                    modifier = Modifier.focusRequester(runFocusRequester)
+                    onClick = { if (!isRunning) runSpeedTest() }
                 )
             }
         }
@@ -341,6 +409,15 @@ fun NetworkSettingsContent(
             }
         }
 
+        item(key = "cache_header") {
+            Text(
+                text = stringResource(R.string.advanced_section_cache),
+                style = MaterialTheme.typography.titleSmall,
+                color = NuvioColors.TextTertiary,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
         item(key = "clear_cw_cache") {
             SettingsGroupCard(modifier = Modifier.fillMaxWidth()) {
                 var cleared by remember { mutableStateOf(false) }
@@ -367,6 +444,8 @@ fun NetworkSettingsContent(
                 )
             }
         }
+    }
+        SettingsVerticalScrollIndicators(state = networkListState)
     }
 }
 
