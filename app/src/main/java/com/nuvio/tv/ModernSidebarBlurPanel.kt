@@ -174,11 +174,10 @@ internal fun ModernSidebarBlurPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
-                modifier = Modifier.offset(y = (-12).dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 drawerItems.forEachIndexed { index, item ->
