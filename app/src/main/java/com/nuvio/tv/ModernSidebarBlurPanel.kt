@@ -124,7 +124,7 @@ internal fun ModernSidebarBlurPanel(
             .clip(panelShape)
             .background(brush = panelBackgroundBrush, shape = panelShape)
             .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
-            .padding(horizontal = 12.dp, vertical = 14.dp)
+            .padding(horizontal = 12.dp, top = 2.dp, bottom = 14.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -233,7 +233,7 @@ private fun SidebarNavigationItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
         Box(
