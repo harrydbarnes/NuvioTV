@@ -2,7 +2,6 @@ package com.nuvio.tv
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,8 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -37,7 +34,6 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Card
@@ -130,11 +126,37 @@ internal fun ModernSidebarBlurPanel(
             .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
             .padding(horizontal = 12.dp, vertical = 14.dp)
     ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            drawerItems.forEachIndexed { index, item ->
+                SidebarNavigationItem(
+                    label = item.label,
+                    iconRes = item.iconRes,
+                    icon = item.icon,
+                    selected = selectedDrawerRoute == item.route,
+                    focusEnabled = keepSidebarFocusDuringCollapse,
+                    labelAlpha = sidebarLabelAlpha,
+                    iconScale = sidebarIconScale,
+                    onFocusChanged = {
+                        if (it) {
+                            onDrawerItemFocused(index)
+                        }
+                    },
+                    onClick = { onDrawerItemClick(item.route) },
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .focusRequester(drawerItemFocusRequesters.getValue(item.route))
+                )
+            }
+        }
+
         if (showProfileSelector && activeProfileName.isNotEmpty()) {
+            Spacer(modifier = Modifier.weight(1f))
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 SidebarProfileItem(
@@ -149,57 +171,6 @@ internal fun ModernSidebarBlurPanel(
                     onClick = onSwitchProfile,
                     modifier = Modifier.fillMaxWidth(0.92f)
                 )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo_wordmark),
-                    contentDescription = "NuvioTV",
-                    modifier = Modifier
-                        .fillMaxWidth(0.72f)
-                        .height(36.dp),
-                    alpha = sidebarLabelAlpha
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                drawerItems.forEachIndexed { index, item ->
-                    SidebarNavigationItem(
-                        label = item.label,
-                        iconRes = item.iconRes,
-                        icon = item.icon,
-                        selected = selectedDrawerRoute == item.route,
-                        focusEnabled = keepSidebarFocusDuringCollapse,
-                        labelAlpha = sidebarLabelAlpha,
-                        iconScale = sidebarIconScale,
-                        onFocusChanged = {
-                            if (it) {
-                                onDrawerItemFocused(index)
-                            }
-                        },
-                        onClick = { onDrawerItemClick(item.route) },
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .focusRequester(drawerItemFocusRequesters.getValue(item.route))
-                    )
-                }
             }
         }
 

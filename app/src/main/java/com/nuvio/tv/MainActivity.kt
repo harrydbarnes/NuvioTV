@@ -947,7 +947,7 @@ private fun ModernSidebarScaffold(
     val keepSidebarFocusDuringCollapse =
         isSidebarExpanded || sidebarCollapsePending || pendingContentFocusTransfer
     val hasSidebarProfileItem = showProfileSelector && activeProfileName.isNotEmpty()
-    val sidebarTopBoundaryIndex = if (hasSidebarProfileItem) drawerItems.size else 0
+    val sidebarTopBoundaryIndex = 0
 
     LaunchedEffect(showSidebar) {
         if (!showSidebar) {
@@ -1211,7 +1211,7 @@ private fun ModernSidebarScaffold(
                             }
 
                             Key.DirectionDown -> {
-                                focusedDrawerIndex == drawerItems.lastIndex
+                                focusedDrawerIndex == if (hasSidebarProfileItem) drawerItems.size else drawerItems.lastIndex
                             }
 
                             Key.DirectionRight, Key.DirectionLeft -> {
