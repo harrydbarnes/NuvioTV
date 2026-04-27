@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -133,8 +132,7 @@ internal fun ModernSidebarBlurPanel(
         if (showProfileSelector && activeProfileName.isNotEmpty()) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = 12.dp),
+                    .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 SidebarProfileItem(
@@ -153,8 +151,7 @@ internal fun ModernSidebarBlurPanel(
         } else {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = 12.dp),
+                    .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -172,13 +169,11 @@ internal fun ModernSidebarBlurPanel(
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            verticalArrangement = Arrangement.Center,
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
-                modifier = Modifier.offset(y = (-12).dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 drawerItems.forEachIndexed { index, item ->
