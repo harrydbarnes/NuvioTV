@@ -130,9 +130,48 @@ internal fun ModernSidebarBlurPanel(
             .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
             .padding(horizontal = 12.dp, vertical = 14.dp)
     ) {
+        if (showProfileSelector && activeProfileName.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                SidebarProfileItem(
+                    profileName = activeProfileName,
+                    profileColorHex = activeProfileColorHex,
+                    profileAvatarImageUrl = activeProfileAvatarImageUrl,
+                    focusEnabled = keepSidebarFocusDuringCollapse,
+                    labelAlpha = sidebarLabelAlpha,
+                    onFocusChanged = { focused ->
+                        if (focused) onDrawerItemFocused(drawerItems.size)
+                    },
+                    onClick = onSwitchProfile,
+                    modifier = Modifier.fillMaxWidth(0.92f)
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo_wordmark),
+                    contentDescription = "NuvioTV",
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .height(36.dp),
+                    alpha = sidebarLabelAlpha
+                )
+            }
+        }
+
         Column(
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .offset(y = (-36).dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -162,43 +201,6 @@ internal fun ModernSidebarBlurPanel(
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (showProfileSelector && activeProfileName.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                SidebarProfileItem(
-                    profileName = activeProfileName,
-                    profileColorHex = activeProfileColorHex,
-                    profileAvatarImageUrl = activeProfileAvatarImageUrl,
-                    focusEnabled = keepSidebarFocusDuringCollapse,
-                    labelAlpha = sidebarLabelAlpha,
-                    onFocusChanged = { focused ->
-                        if (focused) onDrawerItemFocused(drawerItems.size)
-                    },
-                    onClick = onSwitchProfile,
-                    modifier = Modifier.fillMaxWidth(0.92f)
-                )
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo_wordmark),
-                    contentDescription = "NuvioTV",
-                    modifier = Modifier
-                        .fillMaxWidth(0.72f)
-                        .height(36.dp),
-                    alpha = sidebarLabelAlpha
-                )
-            }
-        }
     }
 }
 
