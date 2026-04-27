@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -129,6 +130,40 @@ internal fun ModernSidebarBlurPanel(
             .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
             .padding(horizontal = 12.dp, vertical = 14.dp)
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                drawerItems.forEachIndexed { index, item ->
+                    SidebarNavigationItem(
+                        label = item.label,
+                        iconRes = item.iconRes,
+                        icon = item.icon,
+                        selected = selectedDrawerRoute == item.route,
+                        focusEnabled = keepSidebarFocusDuringCollapse,
+                        labelAlpha = sidebarLabelAlpha,
+                        iconScale = sidebarIconScale,
+                        onFocusChanged = {
+                            if (it) {
+                                onDrawerItemFocused(index)
+                            }
+                        },
+                        onClick = { onDrawerItemClick(item.route) },
+                        modifier = Modifier
+                            .fillMaxWidth(0.92f)
+                            .focusRequester(drawerItemFocusRequesters.getValue(item.route))
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
         if (showProfileSelector && activeProfileName.isNotEmpty()) {
             Box(
                 modifier = Modifier
@@ -164,41 +199,6 @@ internal fun ModernSidebarBlurPanel(
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                drawerItems.forEachIndexed { index, item ->
-                    SidebarNavigationItem(
-                        label = item.label,
-                        iconRes = item.iconRes,
-                        icon = item.icon,
-                        selected = selectedDrawerRoute == item.route,
-                        focusEnabled = keepSidebarFocusDuringCollapse,
-                        labelAlpha = sidebarLabelAlpha,
-                        iconScale = sidebarIconScale,
-                        onFocusChanged = {
-                            if (it) {
-                                onDrawerItemFocused(index)
-                            }
-                        },
-                        onClick = { onDrawerItemClick(item.route) },
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .focusRequester(drawerItemFocusRequesters.getValue(item.route))
-                    )
-                }
-            }
-        }
-
     }
 }
 
