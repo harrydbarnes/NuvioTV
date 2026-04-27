@@ -46,7 +46,7 @@ jobs:
       - name: Rename and Move APKs
         run: |
           mkdir -p build/outputs/harrybarnes-apks
-          find app/build/outputs/apk/release -name "*.apk" | while read apk; do
+          find app/build/outputs/apk -name "*.apk" | while read apk; do
             filename=$(basename "$apk")
             name="${filename%.*}"
             mv "$apk" "build/outputs/harrybarnes-apks/${name}-harrybarnes.apk"
