@@ -54,6 +54,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.SubtitlesOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1625,9 +1627,10 @@ private fun PlayerControlsOverlay(
                     }
 
                     if (hasSubtitleControl) {
+                        val isSubtitlesEnabled = uiState.selectedSubtitleTrackIndex != -1 || uiState.selectedAddonSubtitle != null
                         ControlButton(
-                            icon = Icons.Default.ClosedCaption,
-                            iconPainter = customSubtitlePainter,
+                            icon = if (isSubtitlesEnabled) Icons.Default.Subtitles else Icons.Default.SubtitlesOff,
+                            iconPainter = null,
                             contentDescription = stringResource(R.string.cd_subtitles),
                             onClick = onShowSubtitleDialog,
                             onLongClick = {

@@ -656,15 +656,21 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             resetSubtitleAutoSyncState()
             rememberInternalSubtitleSelection(event.index)
             selectSubtitleTrack(event.index)
-            _uiState.update { 
-                it.copy(
-                    showSubtitleOverlay = true,
-                    showSubtitleStylePanel = false,
-                    showSubtitleTimingDialog = false,
-                    showSubtitleDelayOverlay = false,
-                    showControls = true,
-                    selectedAddonSubtitle = null 
-                ) 
+            if (event.showOverlay) {
+                _uiState.update {
+                    it.copy(
+                        showSubtitleOverlay = true,
+                        showSubtitleStylePanel = false,
+                        showSubtitleTimingDialog = false,
+                        showSubtitleDelayOverlay = false,
+                        showControls = true,
+                        selectedAddonSubtitle = null
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(selectedAddonSubtitle = null)
+                }
             }
         }
 
@@ -700,40 +706,40 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                     // 1. Try to find an addon subtitle matching the preferred language
                     val preferredAddon = addons.firstOrNull { it.lang.equals(primaryLang, ignoreCase = true) }
                     if (preferredAddon != null) {
-                        onEvent(PlayerEvent.OnSelectAddonSubtitle(preferredAddon))
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(preferredAddon, showOverlay = false))
                         return@launch
                     }
 
                     // 2. Try to find an internal track matching the preferred language
                     val preferredInternalIdx = tracks.indexOfFirst { it.language.equals(primaryLang, ignoreCase = true) }
                     if (preferredInternalIdx != -1) {
-                        onEvent(PlayerEvent.OnSelectSubtitleTrack(preferredInternalIdx))
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(preferredInternalIdx, showOverlay = false))
                         return@launch
                     }
 
                     // 3. Fallback to any English addon
                     val engAddon = addons.firstOrNull { it.lang.equals("eng", ignoreCase = true) || it.lang.equals("en", ignoreCase = true) }
                     if (engAddon != null) {
-                        onEvent(PlayerEvent.OnSelectAddonSubtitle(engAddon))
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(engAddon, showOverlay = false))
                         return@launch
                     }
 
                     // 4. Fallback to any English internal track
                     val engInternalIdx = tracks.indexOfFirst { it.language.equals("eng", ignoreCase = true) || it.language.equals("en", ignoreCase = true) }
                     if (engInternalIdx != -1) {
-                        onEvent(PlayerEvent.OnSelectSubtitleTrack(engInternalIdx))
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(engInternalIdx, showOverlay = false))
                         return@launch
                     }
 
                     // 5. Fallback to the first available addon subtitle
                     if (addons.isNotEmpty()) {
-                        onEvent(PlayerEvent.OnSelectAddonSubtitle(addons.first()))
+                        onEvent(PlayerEvent.OnSelectAddonSubtitle(addons.first(), showOverlay = false))
                         return@launch
                     }
 
                     // 6. Fallback to the first available internal track
                     if (tracks.isNotEmpty()) {
-                        onEvent(PlayerEvent.OnSelectSubtitleTrack(0))
+                        onEvent(PlayerEvent.OnSelectSubtitleTrack(0, showOverlay = false))
                         return@launch
                     }
                 }
@@ -772,14 +778,16 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             autoSubtitleSelected = true
             rememberAddonSubtitleSelection(event.subtitle)
             selectAddonSubtitle(event.subtitle)
-            _uiState.update {
-                it.copy(
-                    showSubtitleOverlay = true,
-                    showSubtitleStylePanel = false,
-                    showSubtitleTimingDialog = false,
-                    showSubtitleDelayOverlay = false,
-                    showControls = true
-                )
+            if (event.showOverlay) {
+                _uiState.update {
+                    it.copy(
+                        showSubtitleOverlay = true,
+                        showSubtitleStylePanel = false,
+                        showSubtitleTimingDialog = false,
+                        showSubtitleDelayOverlay = false,
+                        showControls = true
+                    )
+                }
             }
         }
         is PlayerEvent.OnSetPlaybackSpeed -> {
