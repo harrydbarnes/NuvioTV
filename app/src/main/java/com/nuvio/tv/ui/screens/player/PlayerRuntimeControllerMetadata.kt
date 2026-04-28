@@ -362,7 +362,16 @@ internal fun PlayerRuntimeController.updateActiveSkipInterval(positionMs: Long) 
         
         if (currentActive == null || active.type != currentActive.type || active.startTime != currentActive.startTime) {
             lastActiveSkipType = active.type
-            _uiState.update { it.copy(activeSkipInterval = active, skipIntervalDismissed = false) }
+            if (autoSkipIntroEnabled) {
+                val duration = currentPlaybackDurationMs().takeIf { it > 0 } ?: Long.MAX_VALUE
+                val seekMs = if (active.endTime == Double.MAX_VALUE) duration
+                             else (active.endTime * 1000).toLong()
+                seekPlaybackTo(seekMs.coerceAtMost(duration))
+                scheduleProgressSyncAfterSeek()
+                _uiState.update { it.copy(activeSkipInterval = null, skipIntervalDismissed = true) }
+            } else {
+                _uiState.update { it.copy(activeSkipInterval = active, skipIntervalDismissed = false) }
+            }
         }
     } else if (currentActive != null) {
         
