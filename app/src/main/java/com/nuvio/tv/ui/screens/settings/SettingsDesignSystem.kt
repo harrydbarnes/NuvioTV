@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -209,6 +211,24 @@ internal fun SettingsRailButton(
     rawIconRes: Int? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
+
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> Color.White
+            isFocused -> Color.White.copy(alpha = 0.18f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 180),
+        label = "railItemBackground"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.4f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "railItemBorder"
+    )
+
+    val contentColor = if (isSelected) Color(0xFF10151F) else Color.White
     val appliedModifier = if (focusRequester != null) {
         modifier.focusRequester(focusRequester)
     } else {
@@ -229,16 +249,13 @@ internal fun SettingsRailButton(
                 }
             },
         colors = CardDefaults.colors(
-            containerColor = if (isSelected) NuvioColors.BackgroundCard else NuvioColors.Background,
-            focusedContainerColor = NuvioColors.BackgroundCard
+            containerColor = backgroundColor,
+            focusedContainerColor = backgroundColor
         ),
         border = CardDefaults.border(
-            border = if (isSelected) Border(
-                border = BorderStroke(1.dp, NuvioColors.FocusRing),
-                shape = RoundedCornerShape(SettingsPillRadius)
-            ) else Border.None,
+            border = Border.None,
             focusedBorder = Border(
-                border = BorderStroke(2.dp, NuvioColors.FocusRing),
+                border = BorderStroke(1.5.dp, borderColor),
                 shape = RoundedCornerShape(SettingsPillRadius)
             )
         ),
@@ -268,15 +285,13 @@ internal fun SettingsRailButton(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                             contentScale = ContentScale.Fit,
-                            colorFilter = ColorFilter.tint(
-                                if (isSelected || isFocused) NuvioColors.TextPrimary else NuvioColors.TextSecondary
-                            )
+                            colorFilter = ColorFilter.tint(contentColor)
                         )
                     } else if (icon != null) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (isSelected || isFocused) NuvioColors.TextPrimary else NuvioColors.TextSecondary,
+                            tint = contentColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -289,7 +304,7 @@ internal fun SettingsRailButton(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (isSelected || isFocused) NuvioColors.TextPrimary else NuvioColors.TextSecondary,
+                        color = contentColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -380,6 +395,18 @@ internal fun SettingsToggleRow(
     val contentAlpha = if (enabled) 1f else 0.4f
     var isFocused by remember { mutableStateOf(false) }
 
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.18f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "toggleRowBackground"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.4f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "toggleRowBorder"
+    )
+
     Card(
         onClick = {
             if (enabled) onToggle()
@@ -395,12 +422,13 @@ internal fun SettingsToggleRow(
                 }
             },
         colors = CardDefaults.colors(
-            containerColor = NuvioColors.Background,
-            focusedContainerColor = NuvioColors.Background
+            containerColor = backgroundColor,
+            focusedContainerColor = backgroundColor
         ),
         border = CardDefaults.border(
+            border = Border.None,
             focusedBorder = Border(
-                border = BorderStroke(2.dp, NuvioColors.FocusRing.copy(alpha = contentAlpha)),
+                border = BorderStroke(1.5.dp, borderColor.copy(alpha = contentAlpha)),
                 shape = RoundedCornerShape(SettingsPillRadius)
             )
         ),
@@ -458,6 +486,18 @@ internal fun SettingsActionRow(
     val contentAlpha = if (enabled) 1f else 0.4f
     var isFocused by remember { mutableStateOf(false) }
 
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.18f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "actionRowBackground"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.4f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "actionRowBorder"
+    )
+
     Card(
         onClick = { if (enabled) onClick() },
         modifier = modifier
@@ -472,12 +512,13 @@ internal fun SettingsActionRow(
                 }
             },
         colors = CardDefaults.colors(
-            containerColor = NuvioColors.Background,
-            focusedContainerColor = NuvioColors.Background
+            containerColor = backgroundColor,
+            focusedContainerColor = backgroundColor
         ),
         border = CardDefaults.border(
+            border = Border.None,
             focusedBorder = Border(
-                border = BorderStroke(2.dp, NuvioColors.FocusRing.copy(alpha = contentAlpha)),
+                border = BorderStroke(1.5.dp, borderColor.copy(alpha = contentAlpha)),
                 shape = RoundedCornerShape(SettingsPillRadius)
             )
         ),
@@ -554,6 +595,24 @@ internal fun SettingsChoiceChip(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            selected -> Color.White
+            isFocused -> Color.White.copy(alpha = 0.18f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 180),
+        label = "choiceChipBackground"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) Color.White.copy(alpha = 0.4f) else Color.Transparent,
+        animationSpec = tween(durationMillis = 180),
+        label = "choiceChipBorder"
+    )
+
+    val contentColor = if (selected) Color(0xFF10151F) else Color.White
+
     Card(
         onClick = onClick,
         modifier = modifier.onFocusChanged { state ->
@@ -564,16 +623,13 @@ internal fun SettingsChoiceChip(
             }
         },
         colors = CardDefaults.colors(
-            containerColor = if (selected) NuvioColors.FocusRing.copy(alpha = 0.2f) else NuvioColors.Background,
-            focusedContainerColor = if (selected) NuvioColors.FocusRing.copy(alpha = 0.2f) else NuvioColors.Background
+            containerColor = backgroundColor,
+            focusedContainerColor = backgroundColor
         ),
         border = CardDefaults.border(
-            border = if (selected) Border(
-                border = BorderStroke(1.dp, NuvioColors.FocusRing),
-                shape = RoundedCornerShape(SettingsPillRadius)
-            ) else Border.None,
+            border = Border.None,
             focusedBorder = Border(
-                border = BorderStroke(1.dp, NuvioColors.FocusRing),
+                border = BorderStroke(1.5.dp, borderColor),
                 shape = RoundedCornerShape(SettingsPillRadius)
             )
         ),
@@ -583,7 +639,7 @@ internal fun SettingsChoiceChip(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = if (selected || isFocused) NuvioColors.TextPrimary else NuvioColors.TextSecondary,
+            color = contentColor,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
