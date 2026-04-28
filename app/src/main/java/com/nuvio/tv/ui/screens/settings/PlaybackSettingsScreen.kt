@@ -944,11 +944,21 @@ internal fun LanguageSelectionDialog(
     selectedLanguage: String?,
     showNoneOption: Boolean,
     extraOptions: List<Pair<String, String>> = emptyList(),
+    topLanguageCodes: List<String> = emptyList(),
     onLanguageSelected: (String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
-    val sortedLanguages = remember { AVAILABLE_SUBTITLE_LANGUAGES.sortedBy { it.displayName.lowercase() } }
+    val sortedLanguages = remember(topLanguageCodes) {
+        AVAILABLE_SUBTITLE_LANGUAGES
+            .filter { it.code !in topLanguageCodes }
+            .sortedBy { it.displayName.lowercase() }
+    }
+    val topLanguages = remember(topLanguageCodes) {
+        topLanguageCodes.mapNotNull { code ->
+            AVAILABLE_SUBTITLE_LANGUAGES.find { it.code == code }
+        }
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -983,6 +993,24 @@ internal fun LanguageSelectionDialog(
                 }
 
                 items(
+                    count = topLanguages.size,
+                    key = { index -> "language_top_${topLanguages[index].code}" }
+                ) { index ->
+                    val language = topLanguages[index]
+                    LanguageOptionItem(
+                        name = language.displayName,
+                        code = language.code,
+                        isSelected = selectedLanguage == language.code,
+                        onClick = { onLanguageSelected(language.code) },
+                        modifier = if (!showNoneOption && index == 0) {
+                            Modifier.focusRequester(focusRequester)
+                        } else {
+                            Modifier
+                        }
+                    )
+                }
+
+                items(
                     items = extraOptions,
                     key = { (code, _) -> "language_extra_$code" }
                 ) { (code, name) ->
@@ -991,7 +1019,7 @@ internal fun LanguageSelectionDialog(
                         code = code,
                         isSelected = selectedLanguage == code,
                         onClick = { onLanguageSelected(code) },
-                        modifier = if (!showNoneOption && extraOptions.firstOrNull()?.first == code) {
+                        modifier = if (!showNoneOption && topLanguages.isEmpty() && extraOptions.firstOrNull()?.first == code) {
                             Modifier.focusRequester(focusRequester)
                         } else {
                             Modifier

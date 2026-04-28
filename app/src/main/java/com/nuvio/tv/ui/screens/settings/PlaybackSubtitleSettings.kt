@@ -343,6 +343,10 @@ internal fun SubtitleSettingsDialogs(
             selectedLanguage = if (playerSettings.subtitleStyle.preferredLanguage == "none") null else playerSettings.subtitleStyle.preferredLanguage,
             showNoneOption = true,
             extraOptions = listOf(SUBTITLE_LANGUAGE_FORCED to stringResource(R.string.sub_forced_lang)),
+            topLanguageCodes = listOfNotNull(
+                if (playerSettings.subtitleStyle.preferredLanguage == "none" || playerSettings.subtitleStyle.preferredLanguage == SUBTITLE_LANGUAGE_FORCED) null else playerSettings.subtitleStyle.preferredLanguage,
+                if (playerSettings.subtitleStyle.secondaryPreferredLanguage == "none" || playerSettings.subtitleStyle.secondaryPreferredLanguage == SUBTITLE_LANGUAGE_FORCED) null else playerSettings.subtitleStyle.secondaryPreferredLanguage
+            ).distinct(),
             onLanguageSelected = {
                 onSetPreferredLanguage(it)
                 onDismissLanguageDialog()
@@ -357,6 +361,10 @@ internal fun SubtitleSettingsDialogs(
             selectedLanguage = playerSettings.subtitleStyle.secondaryPreferredLanguage,
             showNoneOption = true,
             extraOptions = listOf(SUBTITLE_LANGUAGE_FORCED to stringResource(R.string.sub_forced_lang)),
+            topLanguageCodes = listOfNotNull(
+                if (playerSettings.subtitleStyle.preferredLanguage == "none" || playerSettings.subtitleStyle.preferredLanguage == SUBTITLE_LANGUAGE_FORCED) null else playerSettings.subtitleStyle.preferredLanguage,
+                if (playerSettings.subtitleStyle.secondaryPreferredLanguage == "none" || playerSettings.subtitleStyle.secondaryPreferredLanguage == SUBTITLE_LANGUAGE_FORCED) null else playerSettings.subtitleStyle.secondaryPreferredLanguage
+            ).distinct(),
             onLanguageSelected = {
                 onSetSecondaryLanguage(it)
                 onDismissSecondaryLanguageDialog()
