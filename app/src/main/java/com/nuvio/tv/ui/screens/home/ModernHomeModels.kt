@@ -18,11 +18,13 @@ import com.nuvio.tv.R
 import com.nuvio.tv.ui.components.formatContinueWatchingProgressLabel
 
 internal val YEAR_REGEX = Regex("""\b(19|20)\d{2}\b""")
+internal val YEAR_RANGE_REGEX = Regex("""^((19|20)\d{2})\s*[-–]\s*((19|20)\d{2})?$""")
 internal const val MODERN_HERO_TEXT_WIDTH_FRACTION = 0.42f
 internal const val MODERN_HERO_MEDIA_WIDTH_FRACTION = 0.72f
 internal const val MODERN_TRAILER_OVERSCAN_ZOOM = 1.35f
 internal const val MODERN_HERO_FOCUS_DEBOUNCE_MS = 90L
 internal val MODERN_ROW_HEADER_FOCUS_INSET = 40.dp
+internal const val MODERN_CONTINUE_WATCHING_ROW_KEY = "continue_watching"
 internal val MODERN_LANDSCAPE_LOGO_GRADIENT = Brush.verticalGradient(
     colorStops = arrayOf(
         0.0f to Color.Transparent,
@@ -78,7 +80,9 @@ sealed class ModernPayload {
         val posterShape: PosterShape,
         val focusGlowEnabled: Boolean,
         val focusGifEnabled: Boolean,
-        val focusGifUrl: String?
+        val focusGifUrl: String?,
+        val heroBackdropUrl: String?,
+        val titleLogoUrl: String?
     ) : ModernPayload()
 }
 
@@ -162,7 +166,6 @@ internal data class ModernCatalogRowBuildCacheEntry(
 
 internal data class ModernCollectionRowBuildCacheEntry(
     val source: Collection,
-    val useLandscapePosters: Boolean,
     val mappedRow: HeroCarouselRow
 )
 
@@ -284,7 +287,13 @@ internal fun buildContinueWatchingItem(
     val heroPreview = when (item) {
         is ContinueWatchingItem.InProgress -> {
             val isSeries = isSeriesType(item.progress.contentType)
-            val episodeCode = item.progress.episodeDisplayString
+            val s = item.progress.season
+            val e = item.progress.episode
+            val episodeCode = if (s != null && e != null) {
+                context.getString(R.string.season_episode_format, s, e)
+            } else {
+                null
+            }
             val episodeTitle = item.progress.episodeTitle?.takeIf { it.isNotBlank() }?.localizeEpisodeTitle(context)
             val episodeLabel = when {
                 isSeries && episodeCode != null && episodeTitle != null -> "$episodeCode · $episodeTitle"
@@ -298,7 +307,7 @@ internal fun buildContinueWatchingItem(
                 description = item.episodeDescription ?: item.progress.episodeTitle?.localizeEpisodeTitle(context),
                 contentTypeText = episodeLabel,
                 isSeries = isSeries,
-                yearText = extractYear(item.releaseInfo),
+                yearText = extractYearOrRange(item.releaseInfo),
                 secondaryHighlightText = secondaryHighlightText,
                 imdbText = item.episodeImdbRating?.let { String.format("%.1f", it) },
                 genres = item.genres,
@@ -312,7 +321,11 @@ internal fun buildContinueWatchingItem(
             )
         }
         is ContinueWatchingItem.NextUp -> {
-            val episodeCode = "S${item.info.season}E${item.info.episode}"
+            val episodeCode = context.getString(
+                R.string.season_episode_format,
+                item.info.season,
+                item.info.episode
+            )
             val episodeTitle = item.info.episodeTitle?.takeIf { it.isNotBlank() }?.localizeEpisodeTitle(context)
             val episodeLabel = if (episodeTitle != null) "$episodeCode · $episodeTitle" else episodeCode
             HeroPreview(
@@ -323,7 +336,7 @@ internal fun buildContinueWatchingItem(
                     ?: item.info.airDateLabel?.let { airsDateTemplate.format(it) },
                 contentTypeText = episodeLabel,
                 isSeries = true,
-                yearText = extractYear(item.info.releaseInfo),
+                yearText = extractYearOrRange(item.info.releaseInfo),
                 secondaryHighlightText = secondaryHighlightText,
                 imdbText = item.info.imdbRating?.let { String.format("%.1f", it) },
                 genres = item.info.genres,
@@ -370,9 +383,21 @@ internal fun buildContinueWatchingItem(
             is ContinueWatchingItem.NextUp -> item.info.name
         },
         subtitle = when (item) {
-            is ContinueWatchingItem.InProgress -> item.progress.episodeDisplayString ?: item.progress.episodeTitle
+            is ContinueWatchingItem.InProgress -> {
+                val ps = item.progress.season
+                val pe = item.progress.episode
+                if (ps != null && pe != null) {
+                    context.getString(R.string.season_episode_format, ps, pe)
+                } else {
+                    item.progress.episodeTitle
+                }
+            }
             is ContinueWatchingItem.NextUp -> {
-                val code = "S${item.info.season}E${item.info.episode}"
+                val code = context.getString(
+                    R.string.season_episode_format,
+                    item.info.season,
+                    item.info.episode
+                )
                 if (item.info.hasAired) {
                     code
                 } else {
@@ -466,7 +491,6 @@ internal fun buildCatalogItem(
 internal fun buildCollectionFolderItem(
     collection: Collection,
     folder: CollectionFolder,
-    useLandscapePosters: Boolean,
     occurrence: Int = 0
 ): ModernCarouselItem {
     val title = if (!folder.coverEmoji.isNullOrBlank()) {
@@ -475,28 +499,24 @@ internal fun buildCollectionFolderItem(
         folder.title
     }
     val imageUrl = firstNonBlank(folder.coverImageUrl, collection.backdropImageUrl)
-    val heroImageUrl = if (useLandscapePosters) {
-        firstNonBlank(folder.coverImageUrl, collection.backdropImageUrl)
-    } else {
-        imageUrl
-    }
+    val heroBackdrop = firstNonBlank(folder.heroBackdropUrl, folder.coverImageUrl, collection.backdropImageUrl)
 
     return ModernCarouselItem(
         key = "collection_${collection.id}_${folder.id}_$occurrence",
         title = if (folder.hideTitle) "" else folder.title,
         subtitle = if (folder.hideTitle) null else collection.title,
-        imageUrl = heroImageUrl,
+        imageUrl = imageUrl,
         heroPreview = HeroPreview(
             title = if (folder.hideTitle) "" else title,
-            logo = null,
+            logo = folder.titleLogoUrl,
             description = null,
             contentTypeText = null,
             yearText = null,
             imdbText = null,
             genres = emptyList(),
             poster = imageUrl,
-            backdrop = firstNonBlank(folder.coverImageUrl, collection.backdropImageUrl),
-            imageUrl = heroImageUrl
+            backdrop = heroBackdrop,
+            imageUrl = imageUrl
         ),
         payload = ModernPayload.CollectionFolder(
             focusKey = "collection_${collection.id}::${folder.id}",
@@ -506,7 +526,9 @@ internal fun buildCollectionFolderItem(
             posterShape = folder.tileShape,
             focusGlowEnabled = collection.focusGlowEnabled,
             focusGifEnabled = folder.focusGifEnabled,
-            focusGifUrl = folder.focusGifUrl
+            focusGifUrl = folder.focusGifUrl,
+            heroBackdropUrl = folder.heroBackdropUrl,
+            titleLogoUrl = folder.titleLogoUrl
         )
     )
 }
@@ -557,6 +579,19 @@ internal fun extractYear(releaseInfo: String?): String? {
     return YEAR_REGEX.find(releaseInfo)?.value
 }
 
+internal fun extractYearOrRange(releaseInfo: String?): String? {
+    if (releaseInfo.isNullOrBlank()) return null
+    val trimmed = releaseInfo.trim()
+    val match = YEAR_RANGE_REGEX.find(trimmed)
+    if (match != null) {
+        val startYear = match.groupValues[1]
+        val endYear = match.groupValues[3]
+        // "2022-2025" → "2022–2025", but "2024-" → "2024"
+        return if (endYear.isNotBlank()) "$startYear–$endYear" else startYear
+    }
+    return YEAR_REGEX.find(trimmed)?.value
+}
+
 @Volatile
 private var cachedDateFormatLocale: java.util.Locale? = null
 @Volatile
@@ -583,7 +618,7 @@ internal fun extractYearText(type: ContentType, releaseInfo: String?, released: 
             }
         if (full != null) return full
     }
-    return extractYear(releaseInfo)
+    return extractYearOrRange(releaseInfo)
 }
 
 private val HOURS_REGEX = "(\\d+)\\s*h".toRegex()

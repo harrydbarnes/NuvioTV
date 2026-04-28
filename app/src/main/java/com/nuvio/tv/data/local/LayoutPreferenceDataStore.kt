@@ -60,6 +60,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val posterLabelsEnabledKey = booleanPreferencesKey("poster_labels_enabled")
     private val catalogAddonNameEnabledKey = booleanPreferencesKey("catalog_addon_name_enabled")
     private val catalogTypeSuffixEnabledKey = booleanPreferencesKey("catalog_type_suffix_enabled")
+    private val classicFocusGradientEnabledKey = booleanPreferencesKey("classic_focus_gradient_enabled")
     private val focusedPosterBackdropExpandEnabledKey = booleanPreferencesKey("focused_poster_backdrop_expand_enabled")
     private val focusedPosterBackdropExpandDelaySecondsKey = intPreferencesKey("focused_poster_backdrop_expand_delay_seconds")
     private val focusedPosterBackdropTrailerEnabledKey = booleanPreferencesKey("focused_poster_backdrop_trailer_enabled")
@@ -77,6 +78,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     private val hideUnreleasedContentKey = booleanPreferencesKey("hide_unreleased_content")
     private val showFullReleaseDateKey = booleanPreferencesKey("show_full_release_date")
     private val memoryOnlyVerticalScrollKey = booleanPreferencesKey("memory_only_vertical_scroll")
+    private val smoothBringIntoViewEnabledKey = booleanPreferencesKey("smooth_bring_into_view_enabled")
+    private val fastHorizontalNavigationEnabledKey = booleanPreferencesKey("fast_horizontal_navigation_enabled")
 
     private fun <T> profileFlow(extract: (prefs: androidx.datastore.preferences.core.Preferences) -> T): Flow<T> =
         profileManager.activeProfileId.flatMapLatest { pid ->
@@ -171,6 +174,10 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[catalogTypeSuffixEnabledKey] ?: true
     }
 
+    val classicFocusGradientEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[classicFocusGradientEnabledKey] ?: false
+    }
+
     val focusedPosterBackdropExpandEnabled: Flow<Boolean> = profileFlow { prefs ->
         prefs[focusedPosterBackdropExpandEnabledKey] ?: false
     }
@@ -237,9 +244,29 @@ class LayoutPreferenceDataStore @Inject constructor(
         prefs[memoryOnlyVerticalScrollKey] ?: true
     }
 
+    val smoothBringIntoViewEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[smoothBringIntoViewEnabledKey] ?: true
+    }
+
+    val fastHorizontalNavigationEnabled: Flow<Boolean> = profileFlow { prefs ->
+        prefs[fastHorizontalNavigationEnabledKey] ?: false
+    }
+
     suspend fun setMemoryOnlyVerticalScroll(enabled: Boolean) {
         store().edit { prefs ->
             prefs[memoryOnlyVerticalScrollKey] = enabled
+        }
+    }
+
+    suspend fun setSmoothBringIntoViewEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[smoothBringIntoViewEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setFastHorizontalNavigationEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[fastHorizontalNavigationEnabledKey] = enabled
         }
     }
 
@@ -361,6 +388,12 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setCatalogTypeSuffixEnabled(enabled: Boolean) {
         store().edit { prefs ->
             prefs[catalogTypeSuffixEnabledKey] = enabled
+        }
+    }
+
+    suspend fun setClassicFocusGradientEnabled(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[classicFocusGradientEnabledKey] = enabled
         }
     }
 

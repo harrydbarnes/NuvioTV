@@ -31,6 +31,7 @@ data class LayoutSettingsUiState(
     val posterLabelsEnabled: Boolean = true,
     val catalogAddonNameEnabled: Boolean = true,
     val catalogTypeSuffixEnabled: Boolean = true,
+    val classicFocusGradientEnabled: Boolean = false,
     val focusedPosterBackdropExpandEnabled: Boolean = false,
     val focusedPosterBackdropExpandDelaySeconds: Int = 3,
     val focusedPosterBackdropTrailerEnabled: Boolean = false,
@@ -45,8 +46,7 @@ data class LayoutSettingsUiState(
     val detailPageTrailerButtonEnabled: Boolean = false,
     val preferExternalMetaAddonDetail: Boolean = false,
     val hideUnreleasedContent: Boolean = false,
-    val showFullReleaseDate: Boolean = true,
-    val memoryOnlyVerticalScroll: Boolean = false
+    val showFullReleaseDate: Boolean = true
 )
 
 data class CatalogInfo(
@@ -68,6 +68,7 @@ sealed class LayoutSettingsEvent {
     data class SetPosterLabelsEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetCatalogAddonNameEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetCatalogTypeSuffixEnabled(val enabled: Boolean) : LayoutSettingsEvent()
+    data class SetClassicFocusGradientEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetFocusedPosterBackdropExpandEnabled(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetFocusedPosterBackdropExpandDelaySeconds(val seconds: Int) : LayoutSettingsEvent()
     data class SetFocusedPosterBackdropTrailerEnabled(val enabled: Boolean) : LayoutSettingsEvent()
@@ -83,7 +84,6 @@ sealed class LayoutSettingsEvent {
     data class SetPreferExternalMetaAddonDetail(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetHideUnreleasedContent(val enabled: Boolean) : LayoutSettingsEvent()
     data class SetShowFullReleaseDate(val enabled: Boolean) : LayoutSettingsEvent()
-    data class SetMemoryOnlyVerticalScroll(val enabled: Boolean) : LayoutSettingsEvent()
     data object ResetPosterCardStyle : LayoutSettingsEvent()
 }
 
@@ -173,6 +173,11 @@ class LayoutSettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            layoutPreferenceDataStore.classicFocusGradientEnabled.distinctUntilChanged().collectLatest { enabled ->
+                updateUiStateIfChanged { it.copy(classicFocusGradientEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
             layoutPreferenceDataStore.focusedPosterBackdropExpandEnabled.distinctUntilChanged().collectLatest { enabled ->
                 updateUiStateIfChanged { it.copy(focusedPosterBackdropExpandEnabled = enabled) }
             }
@@ -242,11 +247,6 @@ class LayoutSettingsViewModel @Inject constructor(
                 updateUiStateIfChanged { it.copy(showFullReleaseDate = enabled) }
             }
         }
-        viewModelScope.launch {
-            layoutPreferenceDataStore.memoryOnlyVerticalScroll.distinctUntilChanged().collectLatest { enabled ->
-                updateUiStateIfChanged { it.copy(memoryOnlyVerticalScroll = enabled) }
-            }
-        }
         loadAvailableCatalogs()
     }
 
@@ -264,6 +264,7 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetPosterLabelsEnabled -> setPosterLabelsEnabled(event.enabled)
             is LayoutSettingsEvent.SetCatalogAddonNameEnabled -> setCatalogAddonNameEnabled(event.enabled)
             is LayoutSettingsEvent.SetCatalogTypeSuffixEnabled -> setCatalogTypeSuffixEnabled(event.enabled)
+            is LayoutSettingsEvent.SetClassicFocusGradientEnabled -> setClassicFocusGradientEnabled(event.enabled)
             is LayoutSettingsEvent.SetFocusedPosterBackdropExpandEnabled -> setFocusedPosterBackdropExpandEnabled(event.enabled)
             is LayoutSettingsEvent.SetFocusedPosterBackdropExpandDelaySeconds -> setFocusedPosterBackdropExpandDelaySeconds(event.seconds)
             is LayoutSettingsEvent.SetFocusedPosterBackdropTrailerEnabled -> setFocusedPosterBackdropTrailerEnabled(event.enabled)
@@ -278,7 +279,6 @@ class LayoutSettingsViewModel @Inject constructor(
             is LayoutSettingsEvent.SetPreferExternalMetaAddonDetail -> setPreferExternalMetaAddonDetail(event.enabled)
             is LayoutSettingsEvent.SetHideUnreleasedContent -> setHideUnreleasedContent(event.enabled)
             is LayoutSettingsEvent.SetShowFullReleaseDate -> setShowFullReleaseDate(event.enabled)
-            is LayoutSettingsEvent.SetMemoryOnlyVerticalScroll -> setMemoryOnlyVerticalScroll(event.enabled)
             LayoutSettingsEvent.ResetPosterCardStyle -> resetPosterCardStyle()
         }
     }
@@ -372,6 +372,13 @@ class LayoutSettingsViewModel @Inject constructor(
         }
     }
 
+    private fun setClassicFocusGradientEnabled(enabled: Boolean) {
+        if (_uiState.value.classicFocusGradientEnabled == enabled) return
+        viewModelScope.launch {
+            layoutPreferenceDataStore.setClassicFocusGradientEnabled(enabled)
+        }
+    }
+
     private fun setFocusedPosterBackdropExpandEnabled(enabled: Boolean) {
         if (_uiState.value.focusedPosterBackdropExpandEnabled == enabled) return
         viewModelScope.launch {
@@ -462,13 +469,6 @@ class LayoutSettingsViewModel @Inject constructor(
         if (_uiState.value.showFullReleaseDate == enabled) return
         viewModelScope.launch {
             layoutPreferenceDataStore.setShowFullReleaseDate(enabled)
-        }
-    }
-
-    private fun setMemoryOnlyVerticalScroll(enabled: Boolean) {
-        if (_uiState.value.memoryOnlyVerticalScroll == enabled) return
-        viewModelScope.launch {
-            layoutPreferenceDataStore.setMemoryOnlyVerticalScroll(enabled)
         }
     }
 

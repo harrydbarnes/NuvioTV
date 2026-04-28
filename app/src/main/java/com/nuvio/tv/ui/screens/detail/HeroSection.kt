@@ -56,7 +56,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import android.util.Log
@@ -74,8 +74,8 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.painter.Painter
-import coil.decode.SvgDecoder
-import coil.request.ImageRequest
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import java.util.Locale
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -114,7 +114,6 @@ fun HeroContentSection(
             ImageRequest.Builder(context)
                 .data(logo)
                 .crossfade(true)
-                .decoderFactory(SvgDecoder.Factory())
                 .build()
         }
     }
@@ -232,7 +231,9 @@ fun HeroContentSection(
                     ) {
                         PlayButton(
                             text = nextToWatch?.displayText ?: when {
-                                nextEpisode != null -> stringResource(R.string.hero_play_episode, nextEpisode.season ?: 0, nextEpisode.episode ?: 0)
+                                nextEpisode != null && nextEpisode.season != null && nextEpisode.episode != null ->
+                                    stringResource(R.string.hero_play_episode, nextEpisode.season, nextEpisode.episode)
+                                nextEpisode != null -> stringResource(R.string.hero_play)
                                 else -> stringResource(R.string.hero_play)
                             },
                             onClick = onPlayClick,
@@ -589,9 +590,9 @@ private fun MetaInfoRow(
             meta.released
                 ?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() }
                 ?.let { val locale = java.util.Locale.getDefault(); java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, "dMMMMy"), locale).format(java.util.Date(it.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli())) }
-                ?: meta.releaseInfo?.split("-")?.firstOrNull() ?: meta.releaseInfo
+                ?: formatYearRange(meta.releaseInfo)
         } else {
-            meta.releaseInfo?.split("-")?.firstOrNull() ?: meta.releaseInfo
+            formatYearRange(meta.releaseInfo)
         }
     }
     val imdbRating = if (hideImdbRating) null else meta.imdbRating
@@ -599,14 +600,12 @@ private fun MetaInfoRow(
     val imdbModel = remember(context) {
         ImageRequest.Builder(context)
             .data(com.nuvio.tv.R.raw.imdb_logo_2016)
-            .decoderFactory(SvgDecoder.Factory())
             .build()
     }
     val shouldShowTmdbRating = tmdbRating != null
     val tmdbModel = remember(context) {
         ImageRequest.Builder(context)
             .data(com.nuvio.tv.R.raw.mdblist_tmdb)
-            .decoderFactory(SvgDecoder.Factory())
             .build()
     }
     val ageRatingBadge = remember(meta.ageRating) {
@@ -859,7 +858,6 @@ private fun MDBListRatingsRow(ratings: MDBListRatings) {
                 val model = remember(context, logoRes) {
                     ImageRequest.Builder(context)
                         .data(logoRes)
-                        .decoderFactory(SvgDecoder.Factory())
                         .build()
                 }
                 AsyncImage(
@@ -923,6 +921,20 @@ private fun formatMDBListRating(provider: String, rating: Double): String {
     }
 }
 
+private val DETAIL_YEAR_RANGE_REGEX = Regex("""^((19|20)\d{2})\s*[-–]\s*((19|20)\d{2})?$""")
+
+private fun formatYearRange(releaseInfo: String?): String? {
+    if (releaseInfo.isNullOrBlank()) return null
+    val trimmed = releaseInfo.trim()
+    val match = DETAIL_YEAR_RANGE_REGEX.find(trimmed)
+    if (match != null) {
+        val startYear = match.groupValues[1]
+        val endYear = match.groupValues[3]
+        return if (endYear.isNotBlank()) "$startYear–$endYear" else startYear
+    }
+    return Regex("""\b(19|20)\d{2}\b""").find(trimmed)?.value ?: trimmed
+}
+
 private fun formatRuntime(runtime: String): String {
     val trimmed = runtime.trim()
     // Already in "Xh Ym" or "Xh" format
@@ -962,13 +974,15 @@ private fun rememberRawSvgPainter(
     context: android.content.Context,
     @androidx.annotation.RawRes rawRes: Int
 ): Painter {
-    val model = remember(rawRes, context) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val sizePx = with(density) { 24.dp.roundToPx() }
+    val model = remember(rawRes, context, sizePx) {
         ImageRequest.Builder(context)
             .data(rawRes)
-            .decoderFactory(SvgDecoder.Factory())
+            .size(sizePx)
             .build()
     }
-    return coil.compose.rememberAsyncImagePainter(model = model)
+    return coil3.compose.rememberAsyncImagePainter(model = model)
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)

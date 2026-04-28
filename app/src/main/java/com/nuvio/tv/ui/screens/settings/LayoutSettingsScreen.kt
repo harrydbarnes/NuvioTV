@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -53,6 +54,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.ui.components.ClassicLayoutPreview
@@ -146,10 +148,11 @@ fun LayoutSettingsContent(
                 .fillMaxWidth()
                 .weight(1f)
         ) {
+        val layoutListState = rememberLazyListState()
+        Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
+            state = layoutListState,
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -231,6 +234,20 @@ fun LayoutSettingsContent(
                             onToggle = {
                                 viewModel.onEvent(
                                     LayoutSettingsEvent.SetModernHeroFullScreenBackdropEnabled(!uiState.modernHeroFullScreenBackdropEnabled)
+                                )
+                            },
+                            onFocused = { focusedSection = LayoutSettingsSection.HOME_LAYOUT }
+                        )
+                    }
+
+                    if (uiState.selectedLayout == HomeLayout.CLASSIC) {
+                        CompactToggleRow(
+                            title = stringResource(R.string.layout_classic_focus_gradient),
+                            subtitle = stringResource(R.string.layout_classic_focus_gradient_sub),
+                            checked = uiState.classicFocusGradientEnabled,
+                            onToggle = {
+                                viewModel.onEvent(
+                                    LayoutSettingsEvent.SetClassicFocusGradientEnabled(!uiState.classicFocusGradientEnabled)
                                 )
                             },
                             onFocused = { focusedSection = LayoutSettingsSection.HOME_LAYOUT }
@@ -399,17 +416,6 @@ fun LayoutSettingsContent(
                         },
                         onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
                     )
-                    CompactToggleRow(
-                        title = stringResource(R.string.layout_memory_only_scroll),
-                        subtitle = stringResource(R.string.layout_memory_only_scroll_sub),
-                        checked = uiState.memoryOnlyVerticalScroll,
-                        onToggle = {
-                            viewModel.onEvent(
-                                LayoutSettingsEvent.SetMemoryOnlyVerticalScroll(!uiState.memoryOnlyVerticalScroll)
-                            )
-                        },
-                        onFocused = { focusedSection = LayoutSettingsSection.HOME_CONTENT }
-                    )
                 }
             }
 
@@ -488,7 +494,8 @@ fun LayoutSettingsContent(
                 ) {
                     val isModern = uiState.selectedLayout == HomeLayout.MODERN
                     val isModernLandscape = isModern && uiState.modernLandscapePostersEnabled
-                    val showAutoplayRow = uiState.focusedPosterBackdropExpandEnabled || isModernLandscape
+                    val showAutoplayRow = AppFeaturePolicy.inAppTrailerPlaybackEnabled &&
+                        (uiState.focusedPosterBackdropExpandEnabled || isModernLandscape)
 
                     if (!isModernLandscape) {
                         CompactToggleRow(
@@ -613,6 +620,8 @@ fun LayoutSettingsContent(
                     )
                 }
             }
+        }
+        SettingsVerticalScrollIndicators(state = layoutListState)
         }
         }
     }

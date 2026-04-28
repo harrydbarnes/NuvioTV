@@ -87,6 +87,7 @@ fun DiscoverScreen(
                 firstItemFocusRequester = discoverFirstItemFocusRequester,
                 focusedItemIndex = discoverFocusedItemIndex,
                 shouldRestoreFocusedItem = restoreDiscoverFocus,
+                blockFilterFocus = restoreDiscoverFocus || pendingDiscoverRestoreOnResume,
                 onRestoreFocusedItemHandled = { restoreDiscoverFocus = false },
                 onNavigateToDetail = { itemId, itemType, addonBaseUrl ->
                     pendingDiscoverRestoreOnResume = true
@@ -106,8 +107,21 @@ fun DiscoverScreen(
                     viewModel.onEvent(SearchEvent.SelectDiscoverGenre(it))
                 },
                 onLoadMore = { viewModel.onEvent(SearchEvent.LoadNextDiscoverResults) },
+                onItemLongPress = { item, addonBaseUrl ->
+                    viewModel.posterOptions.show(item, addonBaseUrl)
+                },
                 modifier = Modifier.padding(top = 16.dp)
             )
         }
+
+        val posterOptionsState by viewModel.posterOptions.state.collectAsState()
+        com.nuvio.tv.ui.components.posteroptions.PosterOptionsHost(
+            state = posterOptionsState,
+            controller = viewModel.posterOptions,
+            onNavigateToDetail = { id, type, addonBaseUrl ->
+                pendingDiscoverRestoreOnResume = true
+                onNavigateToDetail(id, type, addonBaseUrl)
+            }
+        )
     }
 }

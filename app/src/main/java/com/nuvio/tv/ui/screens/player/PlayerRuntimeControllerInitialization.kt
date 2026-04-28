@@ -21,8 +21,11 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.ForwardingRenderer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.MediaCodecAudioRenderer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -38,6 +41,7 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.domain.model.Subtitle
 import io.github.peerless2012.ass.media.type.AssRenderType
+import android.os.Handler
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -82,7 +86,8 @@ internal fun PlayerRuntimeController.initializePlayer(
     url: String,
     headers: Map<String, String>,
     overrideInternalPlayerEngine: InternalPlayerEngine? = null,
-    allowEngineFailover: Boolean = true
+    allowEngineFailover: Boolean = true,
+    startPaused: Boolean = false
 ) {
     if (url.isEmpty()) {
         _uiState.update { it.copy(error = context.getString(R.string.player_error_no_stream_url), showLoadingOverlay = false) }
@@ -95,6 +100,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                 startupEngineFailoverTriggered = false
             }
             resetLoadingOverlayForNewStream()
+            if (startPaused) {
+                userPausedManually = true
+                shouldEnforceAutoplayOnFirstReady = false
+            }
             hasTriedAudioPcmFallback = false
             hasTriedDv7HevcFallback = false
             mpvDelayStartAfterAfrSwitch = false
@@ -258,7 +267,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                 },
                 gainAudioProcessor = gainAudioProcessor,
                 playbackSpeedProvider = { _uiState.value.playbackSpeed },
-                onPlaybackSpeedAwareAudioOutputProviderCreated = { playbackSpeedAwareAudioOutputProvider = it }
+                onPlaybackSpeedAwareAudioSinkCreated = { playbackSpeedAwareAudioSink = it }
             ).setExtensionRendererMode(playerSettings.decoderPriority)
                 .setMapDV7ToHevc(playerSettings.mapDV7ToHevc || forceDv7ToHevc)
 
@@ -306,10 +315,6 @@ internal fun PlayerRuntimeController.initializePlayer(
                     .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                     .build()
                 setAudioAttributes(audioAttributes, true)
-                playbackSpeedAwareAudioOutputProvider?.updatePlaybackSpeed(
-                    _uiState.value.playbackSpeed,
-                    selectedAudioRequiresPcmForSpeed(this)
-                )
                 setPlaybackSpeed(_uiState.value.playbackSpeed)
 
                 
@@ -352,7 +357,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                     )
                 )
                 if (showLoadingStatus) _uiState.update { it.copy(loadingMessage = context.getString(R.string.player_loading_starting)) }
-                playWhenReady = true
+                playWhenReady = !startPaused
                 prepare()
 
                 addListener(object : Player.Listener {
@@ -466,6 +471,22 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
                         val detailedError = error.toDisplayMessage()
+
+                        // If the codec crashed while the app is in the background (e.g. another
+                        // app reclaimed the hardware decoder), don't run the retry chain — each
+                        // retry can further corrupt vendor codec state and may resume playback
+                        // in background. Save position, free resources, and rebuild on resume.
+                        if (isInBackground && isRetryablePlaybackError(error)) {
+                            val savedPosition = currentPosition.takeIf { it > 0L } ?: 0L
+                            backgroundCrashSavedPositionMs = savedPosition
+                            pendingBackgroundCrashRecovery = true
+                            errorRetryJob?.cancel()
+                            errorRetryJob = scope.launch {
+                                releasePlayer(flushPlaybackState = false)
+                            }
+                            return
+                        }
+
                         val responseCode = error.findInvalidResponseCodeException()?.responseCode
                         if (responseCode == 416 && !hasRetriedCurrentStreamAfter416) {
                             retryCurrentStreamFromStartAfter416()
@@ -762,7 +783,7 @@ private class SubtitleOffsetRenderersFactory(
     private val shouldNormalizeCuePositionProvider: () -> Boolean,
     private val gainAudioProcessor: GainAudioProcessor,
     private val playbackSpeedProvider: () -> Float,
-    private val onPlaybackSpeedAwareAudioOutputProviderCreated: (PlaybackSpeedAwareAudioOutputProvider) -> Unit
+    private val onPlaybackSpeedAwareAudioSinkCreated: (PlaybackSpeedAwareAudioSink) -> Unit
 ) : DefaultRenderersFactory(context) {
 
     override fun buildAudioSink(
@@ -770,16 +791,67 @@ private class SubtitleOffsetRenderersFactory(
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean
     ): AudioSink {
-        val playbackSpeedAwareProvider = PlaybackSpeedAwareAudioOutputProvider()
-        playbackSpeedAwareProvider.updatePlaybackSpeed(playbackSpeedProvider())
-        onPlaybackSpeedAwareAudioOutputProviderCreated(playbackSpeedAwareProvider)
-
-        return DefaultAudioSink.Builder(context)
+        val baseAudioSink = DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            .setAudioTrackBufferSizeProvider(FormatAwareAudioTrackBufferProvider())
             .setAudioProcessors(arrayOf(gainAudioProcessor))
             .build()
+        val playbackSpeedAwareAudioSink = PlaybackSpeedAwareAudioSink(baseAudioSink)
+        playbackSpeedAwareAudioSink.setInitialPlaybackSpeed(playbackSpeedProvider())
+        onPlaybackSpeedAwareAudioSinkCreated(playbackSpeedAwareAudioSink)
+        return playbackSpeedAwareAudioSink
+    }
+
+    override fun buildAudioRenderers(
+        context: Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        audioSink: AudioSink,
+        eventHandler: Handler,
+        eventListener: AudioRendererEventListener,
+        out: ArrayList<Renderer>
+    ) {
+        val playbackAwareSink = audioSink as? PlaybackSpeedAwareAudioSink
+        if (playbackAwareSink == null) {
+            super.buildAudioRenderers(
+                context,
+                extensionRendererMode,
+                mediaCodecSelector,
+                enableDecoderFallback,
+                audioSink,
+                eventHandler,
+                eventListener,
+                out
+            )
+            return
+        }
+        val startIndex = out.size
+        super.buildAudioRenderers(
+            context,
+            extensionRendererMode,
+            mediaCodecSelector,
+            enableDecoderFallback,
+            audioSink,
+            eventHandler,
+            eventListener,
+            out
+        )
+        if (out.size > startIndex) {
+            val mediaCodecAudioRendererIndex = (startIndex until out.size)
+                .firstOrNull { index -> out[index] is MediaCodecAudioRenderer }
+                ?: startIndex
+            out[mediaCodecAudioRendererIndex] =
+                PlaybackSpeedAwareAudioRenderer(
+                    context = context,
+                    codecAdapterFactory = getCodecAdapterFactory(),
+                    mediaCodecSelector = mediaCodecSelector,
+                    enableDecoderFallback = enableDecoderFallback,
+                    eventHandler = eventHandler,
+                    eventListener = eventListener,
+                    playbackSpeedAwareAudioSink = playbackAwareSink
+                )
+        }
     }
 
     override fun buildTextRenderers(
@@ -807,20 +879,22 @@ private class CueNormalizingTextOutput(
 ) : TextOutput {
 
     override fun onCues(cueGroup: CueGroup) {
-        if (!shouldNormalizeCuePositionProvider()) {
-            delegate.onCues(cueGroup)
-            return
+        val processed = cueGroup.cues.map { cue ->
+            var c = fixRtlCueText(cue)
+            if (shouldNormalizeCuePositionProvider()) c = normalizeCuePosition(c)
+            c
         }
-        delegate.onCues(CueGroup(cueGroup.cues.map(::normalizeCuePosition), cueGroup.presentationTimeUs))
+        delegate.onCues(CueGroup(processed, cueGroup.presentationTimeUs))
     }
 
     @Deprecated("Uses the deprecated Media3 callback for text outputs.")
     override fun onCues(cues: List<Cue>) {
-        if (!shouldNormalizeCuePositionProvider()) {
-            delegate.onCues(cues)
-            return
+        val processed = cues.map { cue ->
+            var c = fixRtlCueText(cue)
+            if (shouldNormalizeCuePositionProvider()) c = normalizeCuePosition(c)
+            c
         }
-        delegate.onCues(cues.map(::normalizeCuePosition))
+        delegate.onCues(processed)
     }
 
     private fun normalizeCuePosition(cue: Cue): Cue {
@@ -831,6 +905,43 @@ private class CueNormalizingTextOutput(
             .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
             .setLineAnchor(Cue.TYPE_UNSET)
             .build()
+    }
+
+    private fun fixRtlCueText(cue: Cue): Cue {
+        val text = cue.text ?: return cue
+        if (!containsRtlChars(text)) return cue
+        val original = text.toString()
+        val fixed = original.split('\n').joinToString("\n") { line ->
+            moveLeadingRtlPunctuationToEnd(line)
+        }
+        if (fixed == original) return cue
+        return cue.buildUpon().setText(android.text.SpannableString(fixed)).build()
+    }
+
+    // In RTL subtitle files punctuation is stored at the logical start of the string,
+    // which should visually appear at the right (end) in RTL. Since SubtitlePainter
+    // renders LTR, we physically move the punctuation to the end of each line.
+    private fun moveLeadingRtlPunctuationToEnd(line: String): String {
+        if (line.isEmpty()) return line
+        var end = 0
+        while (end < line.length && line[end] in RTL_PUNCTUATION) end++
+        if (end == 0) return line
+        val punct = line.substring(0, end)
+        val rest = line.substring(end)
+        return "$rest$punct"
+    }
+
+    private fun containsRtlChars(text: CharSequence): Boolean {
+        for (ch in text) {
+            val d = Character.getDirectionality(ch)
+            if (d == Character.DIRECTIONALITY_RIGHT_TO_LEFT ||
+                d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC) return true
+        }
+        return false
+    }
+
+    companion object {
+        private val RTL_PUNCTUATION = setOf('.', ',', '?', '!', '-', ':', ';', '…', ')', '(')
     }
 }
 

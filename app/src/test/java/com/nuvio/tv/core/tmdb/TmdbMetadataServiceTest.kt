@@ -11,6 +11,7 @@ import com.nuvio.tv.data.remote.api.TmdbImagesResponse
 import com.nuvio.tv.data.remote.api.TmdbMovieReleaseDatesResponse
 import com.nuvio.tv.data.remote.api.TmdbNetwork
 import com.nuvio.tv.data.remote.api.TmdbNetworkDetailsResponse
+import com.nuvio.tv.data.remote.api.TmdbVideosResponse
 import com.nuvio.tv.domain.model.ContentType
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -18,8 +19,9 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -47,6 +49,7 @@ class TmdbMetadataServiceTest {
         coEvery { api.getMovieCredits(any(), any(), any()) } returns Response.success(TmdbCreditsResponse())
         coEvery { api.getMovieImages(any(), any(), any()) } returns Response.success(TmdbImagesResponse())
         coEvery { api.getMovieReleaseDates(any(), any()) } returns Response.success(TmdbMovieReleaseDatesResponse())
+        coEvery { api.getMovieVideos(any(), any(), any()) } returns Response.success(TmdbVideosResponse(id = 10))
 
         val service = TmdbMetadataService(api)
 
@@ -73,7 +76,7 @@ class TmdbMetadataServiceTest {
         coEvery { api.getMovieDetails(any(), any(), any()) } coAnswers {
             detailsCalls += 1
             gate.await()
-            Response.success(TmdbDetailsResponse(id = 10, title = "Movie"))
+            Response.success(TmdbDetailsResponse(id = 10, title = "Movie", overview = "Synopsis"))
         }
         coEvery { api.getMovieCredits(any(), any(), any()) } coAnswers {
             creditsCalls += 1
@@ -87,13 +90,14 @@ class TmdbMetadataServiceTest {
             releaseCalls += 1
             Response.success(TmdbMovieReleaseDatesResponse())
         }
+        coEvery { api.getMovieVideos(any(), any(), any()) } returns Response.success(TmdbVideosResponse(id = 10))
 
-        val service = TmdbMetadataService(api)
+        val service = TmdbMetadataService(api, StandardTestDispatcher(testScheduler))
 
         val first = async { service.fetchEnrichment(tmdbId = "10", contentType = ContentType.MOVIE, language = "en") }
         val second = async { service.fetchEnrichment(tmdbId = "10", contentType = ContentType.MOVIE, language = "en") }
 
-        yield()
+        advanceUntilIdle()
         assertEquals(1, detailsCalls)
 
         gate.complete(Unit)
@@ -144,14 +148,15 @@ class TmdbMetadataServiceTest {
             )
         }
         coEvery {
-            api.discoverTv(any(), any(), any(), any(), any(), any(), any(), any())
+            api.discoverTv(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } answers {
             tvCalls += TvDiscoverCall(
                 sortBy = arg(3),
                 withCompanies = arg(4),
                 withNetworks = arg(5),
                 firstAirDateLte = arg(6),
-                voteCountGte = arg(7)
+                voteCountGte = arg(7),
+                withStatus = arg(16)
             )
             Response.success(
                 TmdbDiscoverResponse(
@@ -215,14 +220,15 @@ class TmdbMetadataServiceTest {
             )
         )
         coEvery {
-            api.discoverTv(any(), any(), any(), any(), any(), any(), any(), any())
+            api.discoverTv(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } answers {
             tvCalls += TvDiscoverCall(
                 sortBy = arg(3),
                 withCompanies = arg(4),
                 withNetworks = arg(5),
                 firstAirDateLte = arg(6),
-                voteCountGte = arg(7)
+                voteCountGte = arg(7),
+                withStatus = arg(16)
             )
             Response.success(
                 TmdbDiscoverResponse(
@@ -258,6 +264,7 @@ class TmdbMetadataServiceTest {
         assertTrue(data?.rails?.all { it.mediaType == TmdbEntityMediaType.TV } == true)
         assertTrue(tvCalls.all { it.withNetworks == "77" })
         assertTrue(tvCalls.all { it.withCompanies == null })
+        assertTrue(tvCalls.all { it.withStatus == "0|3|4" })
         assertNull(tvCalls.firstOrNull { it.sortBy == "popularity.desc" }?.voteCountGte)
         assertEquals(200, tvCalls.first { it.sortBy == "vote_average.desc" }.voteCountGte)
     }
@@ -274,6 +281,7 @@ class TmdbMetadataServiceTest {
         val withCompanies: String?,
         val withNetworks: String?,
         val firstAirDateLte: String?,
-        val voteCountGte: Int?
+        val voteCountGte: Int?,
+        val withStatus: String?
     )
 }

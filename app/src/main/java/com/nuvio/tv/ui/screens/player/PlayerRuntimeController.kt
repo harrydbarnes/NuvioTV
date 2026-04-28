@@ -222,7 +222,7 @@ class PlayerRuntimeController(
     internal var _exoPlayer: ExoPlayer? = null
     val exoPlayer: ExoPlayer?
         get() = _exoPlayer
-    internal var playbackSpeedAwareAudioOutputProvider: PlaybackSpeedAwareAudioOutputProvider? = null
+    internal var playbackSpeedAwareAudioSink: PlaybackSpeedAwareAudioSink? = null
 
     internal var progressJob: Job? = null
     internal var hideControlsJob: Job? = null
@@ -257,6 +257,10 @@ class PlayerRuntimeController(
     internal var metaCountry: String? = null
     internal var nextEpisodeVideo: Video? = null
     internal var userPausedManually = false
+
+    internal var isInBackground: Boolean = false
+    internal var pendingBackgroundCrashRecovery: Boolean = false
+    internal var backgroundCrashSavedPositionMs: Long = 0L
 
     
     internal var skipIntervals: List<SkipInterval> = emptyList()

@@ -450,7 +450,9 @@ internal fun PlayerRuntimeController.adjustSubtitleDelay(deltaMs: Int, showOverl
             .buildUpon()
             .build()
     }
-    
+    // Remember the delay so it survives to the next session (issue #1063).
+    persistTrackPreference()
+
     if (!showOverlay || keepInlineInSubtitleOverlay) {
         hideSubtitleDelayOverlayJob?.cancel()
         hideSubtitleDelayOverlayJob = null
@@ -710,13 +712,11 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
             if (isUsingMpvEngine()) {
                 setPlaybackSpeedInternal(event.speed)
             } else {
-                val requiresPcm = _exoPlayer?.let(::selectedAudioRequiresPcmForSpeed) == true
-                playbackSpeedAwareAudioOutputProvider?.updatePlaybackSpeed(
-                    event.speed,
-                    selectedAudioRequiresPcmForSpeed = requiresPcm
-                )
                 _exoPlayer?.let { player ->
                     player.setPlaybackSpeed(event.speed)
+                    player.trackSelectionParameters = player.trackSelectionParameters
+                        .buildUpon()
+                        .build()
                 }
             }
             _uiState.update { 
@@ -1086,8 +1086,7 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                 it.copy(
                     showStreamInfoOverlay = true,
                     streamInfoData = info,
-                    showMoreDialog = false,
-                    showControls = false
+                    showControls = true
                 )
             }
         }
