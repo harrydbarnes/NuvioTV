@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
@@ -132,6 +133,7 @@ internal fun PlaybackSettingsSections(
     onSetPauseOverlayEnabled: (Boolean) -> Unit,
     onSetOsdClockEnabled: (Boolean) -> Unit,
     onSetSkipIntroEnabled: (Boolean) -> Unit,
+    onSetAutoSkipIntroEnabled: (Boolean) -> Unit,
     onSetFrameRateMatchingMode: (FrameRateMatchingMode) -> Unit,
     onSetResolutionMatchingEnabled: (Boolean) -> Unit,
     onDisableAfrAndResolution: () -> Unit,
@@ -323,6 +325,18 @@ internal fun PlaybackSettingsSections(
                     onCheckedChange = onSetSkipIntroEnabled,
                     onFocused = { focusedSection = PlaybackSection.GENERAL },
                     enabled = !generalUi.isExternalPlayer
+                )
+            }
+
+            item(key = "general_auto_skip_intro") {
+                ToggleSettingsItem(
+                    icon = Icons.Default.FastForward,
+                    title = stringResource(R.string.playback_auto_skip_intro),
+                    subtitle = stringResource(R.string.playback_auto_skip_intro_sub),
+                    isChecked = playerSettings.autoSkipIntroEnabled,
+                    onCheckedChange = onSetAutoSkipIntroEnabled,
+                    onFocused = { focusedSection = PlaybackSection.GENERAL },
+                    enabled = !generalUi.isExternalPlayer && playerSettings.skipIntroEnabled
                 )
             }
 
