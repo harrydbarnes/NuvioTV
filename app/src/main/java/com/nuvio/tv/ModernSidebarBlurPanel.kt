@@ -147,7 +147,7 @@ internal fun ModernSidebarBlurPanel(
                         if (focused) onDrawerItemFocused(drawerItems.size)
                     },
                     onClick = onSwitchProfile,
-                    modifier = Modifier.fillMaxWidth(0.92f)
+                    modifier = Modifier.fillMaxWidth(0.75f)
                 )
             }
         } else {
@@ -197,7 +197,7 @@ internal fun ModernSidebarBlurPanel(
                         },
                         onClick = { onDrawerItemClick(item.route) },
                         modifier = Modifier
-                            .fillMaxWidth(0.92f)
+                            .fillMaxWidth(0.75f)
                             .focusRequester(drawerItemFocusRequesters.getValue(item.route))
                     )
                 }
