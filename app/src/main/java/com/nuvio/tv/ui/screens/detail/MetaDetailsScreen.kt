@@ -1578,6 +1578,7 @@ private fun MetaDetailsContent(
                             watchedEpisodes = watchedEpisodes,
                             episodeWatchedPendingKeys = episodeWatchedPendingKeys,
                             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                            fallbackThumbnail = meta.backdropUrl ?: meta.poster,
                             onEpisodeClick = episodeClick,
                             onEpisodeManualPlayClick = episodeManualClick,
                             showManualPlayOption = showManualPlayOption,

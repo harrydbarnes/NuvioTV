@@ -242,6 +242,7 @@ fun EpisodesRow(
     watchedEpisodes: Set<Pair<Int, Int>> = emptySet(),
     episodeWatchedPendingKeys: Set<String> = emptySet(),
     blurUnwatchedEpisodes: Boolean = false,
+    fallbackThumbnail: String? = null,
     onEpisodeClick: (Video) -> Unit,
     onEpisodeManualPlayClick: (Video) -> Unit = onEpisodeClick,
     onToggleEpisodeWatched: (Video) -> Unit,
@@ -367,6 +368,7 @@ fun EpisodesRow(
                 imdbRating = imdbRating,
                 isMarkedWatched = isMarkedWatched,
                 blurUnwatched = blurUnwatchedEpisodes,
+                fallbackThumbnail = fallbackThumbnail,
                 cardMetrics = cardMetrics,
                 onClick = episodeOnClick,
                 onLongPress = episodeOnLongPress,
@@ -442,6 +444,7 @@ private fun EpisodeCard(
     imdbRating: Double? = null,
     isMarkedWatched: Boolean = false,
     blurUnwatched: Boolean = false,
+    fallbackThumbnail: String? = null,
     cardMetrics: EpisodeCardMetrics,
     imdbLogoRequest: ImageRequest,
     onClick: () -> Unit,
@@ -471,6 +474,9 @@ private fun EpisodeCard(
     val showCompletedBadge = isWatched
     val showNotStartedBadge = remember(showCompletedBadge, progressPercent) { !showCompletedBadge && progressPercent < 0.02f }
     val isUnavailable = remember(episode.available) { episode.available == false }
+    val resolvedThumbnailUrl = remember(episode.thumbnail, fallbackThumbnail, isUnavailable) {
+        if (isUnavailable || episode.thumbnail.isNullOrBlank()) fallbackThumbnail else episode.thumbnail
+    }
     val cardBgColor = NuvioColors.BackgroundCard
     val isFocusedState = remember { mutableStateOf(false) }
     val cardCornerRadius = remember(cardMetrics.cornerRadius, density) {
@@ -531,9 +537,9 @@ private fun EpisodeCard(
     val badgeShape = remember(cardMetrics.episodeBadgeCornerRadius) { RoundedCornerShape(cardMetrics.episodeBadgeCornerRadius) }
     val progressBgColor = remember { Color.Black.copy(alpha = 0.45f) }
     val notStartedBadgeColor = remember(textSecondary) { textSecondary.copy(alpha = 0.9f) }
-    val thumbnailRequest = remember(context, episode.thumbnail, thumbnailWidthPx, thumbnailHeightPx, shouldBlur) {
+    val thumbnailRequest = remember(context, resolvedThumbnailUrl, thumbnailWidthPx, thumbnailHeightPx, shouldBlur) {
         ImageRequest.Builder(context)
-            .data(episode.thumbnail)
+            .data(resolvedThumbnailUrl)
             .crossfade(true)
             .size(width = thumbnailWidthPx, height = thumbnailHeightPx)
             .apply {
