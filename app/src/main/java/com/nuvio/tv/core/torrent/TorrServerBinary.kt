@@ -117,12 +117,12 @@ class TorrServerBinary @Inject constructor(
         throw TorrentException("TorrServer failed to start within ${STARTUP_TIMEOUT_MS / 1000}s")
     }
 
-    private fun killOrphanedProcess() {
+    private suspend fun killOrphanedProcess() = withContext(Dispatchers.IO) {
         try {
             // Try graceful shutdown in case an old instance is still responding
             val request = Request.Builder().url("$baseUrl/shutdown").build()
             healthClient.newCall(request).execute().close()
-            Thread.sleep(1000)
+            delay(1000)
             Log.d(TAG, "Shut down orphaned TorrServer instance")
         } catch (_: Exception) {
             // No orphan responding — nothing to do
