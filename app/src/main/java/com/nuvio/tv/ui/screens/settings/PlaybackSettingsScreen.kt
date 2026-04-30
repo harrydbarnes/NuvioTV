@@ -214,6 +214,7 @@ fun PlaybackSettingsContent(
                 onShowMpvHardwareDecodeModeDialog = { openDialog { showMpvHardwareDecodeModeDialog = true } },
                 onShowLanguageDialog = { openDialog { showLanguageDialog = true } },
                 onShowSecondaryLanguageDialog = { openDialog { showSecondaryLanguageDialog = true } },
+                onSetSubtitleHideUnpreferredLanguages = { hide -> coroutineScope.launch { viewModel.setSubtitleHideUnpreferredLanguages(hide) } },
                 onShowSubtitleStartupModeDialog = { openDialog { showSubtitleStartupModeDialog = true } },
                 onShowTextColorDialog = { openDialog { showTextColorDialog = true } },
                 onShowBackgroundColorDialog = { openDialog { showBackgroundColorDialog = true } },
@@ -319,6 +320,9 @@ fun PlaybackSettingsContent(
         },
         onSetSubtitleSecondaryLanguage = { language ->
             coroutineScope.launch { viewModel.setSubtitleSecondaryLanguage(language) }
+        },
+        onSetSubtitleHideUnpreferredLanguages = { hide ->
+            coroutineScope.launch { viewModel.setSubtitleHideUnpreferredLanguages(hide) }
         },
         onSetAddonSubtitleStartupMode = { mode ->
             coroutineScope.launch { viewModel.setAddonSubtitleStartupMode(mode) }

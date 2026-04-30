@@ -126,6 +126,7 @@ internal fun SubtitleSelectionOverlay(
             addonSubtitles = sessionAddonSubtitles,
             preferredLanguage = sessionPreferredLanguage,
             secondaryPreferredLanguage = sessionSecondaryPreferredLanguage,
+            hideUnpreferredLanguages = subtitleStyle.hideUnpreferredLanguages,
             noneLabel = noneLabel
         )
     }
@@ -1660,6 +1661,7 @@ private fun buildSubtitleLanguageRailItems(
     addonSubtitles: List<Subtitle>,
     preferredLanguage: String,
     secondaryPreferredLanguage: String?,
+    hideUnpreferredLanguages: Boolean,
     noneLabel: String
 ): List<SubtitleLanguageRailItem> {
     val counts = linkedMapOf<String, Int>()
@@ -1677,7 +1679,7 @@ private fun buildSubtitleLanguageRailItems(
         secondaryPreferredLanguage = secondaryPreferredLanguage
     )
 
-    val sortedItems = counts.entries
+    var sortedItemsSequence = counts.entries
         .sortedWith(
             compareBy<Map.Entry<String, Int>>(
                 { entry ->
@@ -1687,13 +1689,20 @@ private fun buildSubtitleLanguageRailItems(
                 { entry -> subtitleLanguageSortLabel(entry.key) }
             )
         )
+        .asSequence()
+
+    if (hideUnpreferredLanguages) {
+        sortedItemsSequence = sortedItemsSequence.filter { entry -> preferredOrder.contains(entry.key) }
+    }
+
+    val sortedItems = sortedItemsSequence
         .map { (key, count) ->
             SubtitleLanguageRailItem(
                 key = key,
                 label = subtitleLanguageLabel(key),
                 count = count
             )
-        }
+        }.toList()
 
     return listOf(
         SubtitleLanguageRailItem(

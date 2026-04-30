@@ -70,6 +70,7 @@ internal fun LazyListScope.subtitleSettingsItems(
     playerSettings: PlayerSettings,
     onShowLanguageDialog: () -> Unit,
     onShowSecondaryLanguageDialog: () -> Unit,
+    onSetSubtitleHideUnpreferredLanguages: (Boolean) -> Unit,
     onShowSubtitleStartupModeDialog: () -> Unit,
     onShowTextColorDialog: () -> Unit,
     onShowBackgroundColorDialog: () -> Unit,
@@ -229,6 +230,18 @@ internal fun LazyListScope.subtitleSettingsItems(
                 enabled = enabled
             )
         }
+    }
+
+    item(key = "subtitle_hide_unpreferred") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Subtitles,
+            title = stringResource(R.string.sub_hide_unpreferred),
+            subtitle = stringResource(R.string.sub_hide_unpreferred_sub),
+            isChecked = playerSettings.subtitleStyle.hideUnpreferredLanguages,
+            onCheckedChange = onSetSubtitleHideUnpreferredLanguages,
+            onFocused = onItemFocused,
+            enabled = enabled
+        )
     }
 
     item(key = "subtitle_advanced_header") {
