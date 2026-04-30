@@ -137,6 +137,7 @@ class HomeViewModel @Inject constructor(
     internal var collectionsCache: List<Collection> = emptyList()
     internal var homeCatalogOrderKeys: List<String> = emptyList()
     internal var disabledHomeCatalogKeys: Set<String> = emptySet()
+    internal var followAddonsOrderEnabled: Boolean = false
     internal var customCatalogTitles: Map<String, String> = emptyMap()
     internal var currentHeroCatalogKeys: List<String> = emptyList()
     internal var catalogUpdateJob: Job? = null
@@ -239,6 +240,7 @@ class HomeViewModel @Inject constructor(
             observeModernHomePresentation()
             observeExternalMetaPrefetchPreference()
             loadHomeCatalogOrderPreference()
+            loadFollowAddonsOrder()
             loadDisabledHomeCatalogPreference()
             loadCustomCatalogTitles()
             observeLibraryState()
@@ -313,6 +315,7 @@ class HomeViewModel @Inject constructor(
         cwEnrichedNextUpOverlay.clear()
         cwEnrichedInProgressOverlay.clear()
         cwLastBadgeEpisodeKeys = emptySet()
+        watchedSeriesStateHolder.clearValidationState()
         _uiState.update { it.copy(continueWatchingItems = emptyList()) }
         // Bump trigger so the pipeline's collectLatest restarts with fresh state.
         cwPipelineRefreshTrigger.value++
@@ -376,6 +379,8 @@ class HomeViewModel @Inject constructor(
 
     private fun loadHomeCatalogOrderPreference() = loadHomeCatalogOrderPreferencePipeline()
 
+    private fun loadFollowAddonsOrder() = loadFollowAddonsOrderPipeline()
+
     private fun loadDisabledHomeCatalogPreference() = loadDisabledHomeCatalogPreferencePipeline()
 
     private fun loadCustomCatalogTitles() = loadCustomCatalogTitlesPipeline()
@@ -413,8 +418,8 @@ class HomeViewModel @Inject constructor(
                         _uiState.update { it.copy(continueWatchingItems = emptyList()) }
                         // Clear disk cache for current profile.
                         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                            runCatching { cwEnrichmentCache.saveNextUpSnapshot(emptyList()) }
-                            runCatching { cwEnrichmentCache.saveInProgressSnapshot(emptyList()) }
+                            runCatching { cwEnrichmentCache.saveNextUpSnapshot(emptyList(), force = true) }
+                            runCatching { cwEnrichmentCache.saveInProgressSnapshot(emptyList(), force = true) }
                         }
                         // Reload CW from fresh source.
                         loadContinueWatching()

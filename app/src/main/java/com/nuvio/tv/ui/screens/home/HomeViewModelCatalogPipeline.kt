@@ -56,6 +56,16 @@ internal fun HomeViewModel.loadHomeCatalogOrderPreferencePipeline() {
     }
 }
 
+internal fun HomeViewModel.loadFollowAddonsOrderPipeline() {
+    viewModelScope.launch {
+        layoutPreferenceDataStore.followAddonsOrder.collectLatest { enabled ->
+            followAddonsOrderEnabled = enabled
+            rebuildCatalogOrder(addonsCache)
+            scheduleUpdateCatalogRows()
+        }
+    }
+}
+
 internal fun HomeViewModel.loadDisabledHomeCatalogPreferencePipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.disabledHomeCatalogKeys.collectLatest { keys ->
@@ -265,10 +275,9 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         }
         lazyLoadRequestedKeys.clear()
 
-        lazyHomeCatalogs.forEach { (addon, catalog) ->
+        (eagerHomeCatalogs + lazyHomeCatalogs).forEach { (addon, catalog) ->
             val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
             synchronized(catalogStateLock) {
-                pendingLazyCatalogs[key] = addon to catalog
                 placeholderDescriptors.add(
                     HomeViewModel.PlaceholderDescriptor(
                         catalogKey = key,
@@ -284,6 +293,13 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
             }
         }
 
+        lazyHomeCatalogs.forEach { (addon, catalog) ->
+            val key = catalogKey(addonId = addon.id, type = catalog.apiType, catalogId = catalog.id)
+            synchronized(catalogStateLock) {
+                pendingLazyCatalogs[key] = addon to catalog
+            }
+        }
+
         Log.d(HomeViewModel.TAG,
             "Lazy loading: eager=${eagerHomeCatalogs.size} lazy=${lazyHomeCatalogs.size}"
         )
@@ -295,10 +311,8 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         }
 
         // Immediately schedule an update so placeholder rows appear in the UI
-        // while eager catalogs are still loading.
-        if (lazyHomeCatalogs.isNotEmpty()) {
-            scheduleUpdateCatalogRows()
-        }
+        // while catalogs are still loading.
+        scheduleUpdateCatalogRows()
     } catch (e: Exception) {
         catalogsLoadInProgress = false
         _uiState.update { it.copy(isLoading = false, error = e.message) }

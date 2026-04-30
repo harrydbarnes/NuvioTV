@@ -16,6 +16,7 @@ import com.nuvio.tv.data.remote.api.ImdbTapframeApi
 import com.nuvio.tv.data.remote.api.MDBListApi
 import com.nuvio.tv.data.remote.api.ParentalGuideApi
 import com.nuvio.tv.data.remote.api.SeriesGraphApi
+import com.nuvio.tv.data.remote.api.SponsorsApi
 import com.nuvio.tv.data.remote.api.TmdbApi
 import com.nuvio.tv.data.remote.api.UniqueContributionsApi
 import com.squareup.moshi.Moshi
@@ -81,6 +82,13 @@ object NetworkModule {
             .cache(Cache(File(context.cacheDir, "http_cache"), 50L * 1024 * 1024)) // 50 MB disk cache
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                val version = BuildConfig.VERSION_NAME.ifBlank { "dev" }
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", "Nuvio/$version")
+                    .build()
+                chain.proceed(request)
+            }
             // Prevent OkHttp from caching error responses (4xx/5xx).
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
@@ -341,6 +349,11 @@ object NetworkModule {
     @Singleton
     fun provideDonationsApi(@Named("donations") retrofit: Retrofit): DonationsApi =
         retrofit.create(DonationsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSponsorsApi(@Named("donations") retrofit: Retrofit): SponsorsApi =
+        retrofit.create(SponsorsApi::class.java)
 
     // --- Trailer API ---
 

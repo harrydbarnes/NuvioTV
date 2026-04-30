@@ -82,8 +82,10 @@ import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.theme.NuvioColors
 import com.nuvio.tv.ui.theme.NuvioTheme
+import com.nuvio.tv.ui.theme.ThemeColors
 import android.text.format.DateFormat
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -250,6 +252,8 @@ fun EpisodesRow(
     onMarkSeasonUnwatched: (Int) -> Unit = {},
     isSeasonFullyWatched: Boolean = false,
     selectedSeason: Int = 1,
+    onOpenEpisodeComments: (Video) -> Unit = {},
+    showOpenEpisodeComments: Boolean = false,
     onMarkPreviousEpisodesWatched: (Video) -> Unit = {},
     upFocusRequester: FocusRequester,
     downFocusRequester: FocusRequester? = null,
@@ -402,6 +406,11 @@ fun EpisodesRow(
                 onEpisodeClick(selectedEpisode)
                 optionsEpisode = null
             },
+            onOpenEpisodeComments = {
+                onOpenEpisodeComments(selectedEpisode)
+                optionsEpisode = null
+            },
+            showOpenEpisodeComments = showOpenEpisodeComments,
             onPlayManually = {
                 onEpisodeManualPlayClick(selectedEpisode)
                 optionsEpisode = null
@@ -713,21 +722,12 @@ private fun EpisodeCard(
                     )
                 }
 
-                if (isUnavailable || runtimeLabel != null || ratingLabel != null || formattedDate.isNotBlank()) {
+                if (runtimeLabel != null || ratingLabel != null || formattedDate.isNotBlank()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (isUnavailable) {
-                            Text(
-                                text = strUnavailable,
-                                style = metaLabelStyle,
-                                color = Color(0xFFFFB74D),
-                                maxLines = 1
-                            )
-                        }
-
                         runtimeLabel?.let { runtime ->
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -819,13 +819,14 @@ private fun EpisodeCard(
                             top = cardMetrics.statusBadgeInset
                         )
                         .size(cardMetrics.statusBadgeSize)
-                        .background(primaryColor, CircleShape),
+                        .shadow(10.dp, shape = CircleShape)
+                        .background(NuvioColors.Secondary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = strCdWatched,
-                        tint = Color.White,
+                        tint = if (NuvioColors.Secondary == ThemeColors.White.secondary) Color.Black else Color.White,
                         modifier = Modifier.size(cardMetrics.statusIconSize)
                     )
                 }
@@ -888,6 +889,8 @@ private fun EpisodeOptionsDialog(
     hasPreviousEpisodes: Boolean = false,
     onDismiss: () -> Unit,
     onPlay: () -> Unit,
+    onOpenEpisodeComments: () -> Unit = {},
+    showOpenEpisodeComments: Boolean = false,
     onPlayManually: () -> Unit = {},
     showPlayManually: Boolean = false,
     onToggleWatched: () -> Unit,
@@ -954,6 +957,19 @@ private fun EpisodeOptionsDialog(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.episodes_play))
+        }
+
+        if (showOpenEpisodeComments) {
+            Button(
+                onClick = onOpenEpisodeComments,
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioColors.BackgroundCard,
+                    contentColor = NuvioColors.TextPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.episodes_open_comments))
+            }
         }
 
         if (showPlayManually) {

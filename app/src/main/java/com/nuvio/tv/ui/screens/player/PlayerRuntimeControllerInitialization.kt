@@ -49,7 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-private const val STARTUP_SUBTITLE_PREFETCH_TIMEOUT_MS = 10_000L
+private const val STARTUP_SUBTITLE_PREFETCH_TIMEOUT_MS = 20_000L
 private const val MPV_AFR_SETTLE_DELAY_MS = 2_000L
 
 internal data class StartupSubtitlePreparation(
@@ -86,7 +86,8 @@ internal fun PlayerRuntimeController.initializePlayer(
     url: String,
     headers: Map<String, String>,
     overrideInternalPlayerEngine: InternalPlayerEngine? = null,
-    allowEngineFailover: Boolean = true
+    allowEngineFailover: Boolean = true,
+    startPaused: Boolean = false
 ) {
     if (url.isEmpty()) {
         _uiState.update { it.copy(error = context.getString(R.string.player_error_no_stream_url), showLoadingOverlay = false) }
@@ -99,10 +100,19 @@ internal fun PlayerRuntimeController.initializePlayer(
                 startupEngineFailoverTriggered = false
             }
             resetLoadingOverlayForNewStream()
+            if (startPaused) {
+                userPausedManually = true
+                shouldEnforceAutoplayOnFirstReady = false
+            }
             hasTriedAudioPcmFallback = false
             hasTriedDv7HevcFallback = false
             mpvDelayStartAfterAfrSwitch = false
             val playerSettings = playerSettingsDataStore.playerSettings.first()
+            rememberAudioDelayPerDeviceEnabled = playerSettings.rememberAudioDelayPerDevice
+            if (rememberAudioDelayPerDeviceEnabled) {
+                registerAudioDelayRouteCallback()
+                applyStoredAudioDelayForCurrentRouteIfEnabled()
+            }
             cachedDecoderPriority = playerSettings.decoderPriority
             val preferredAudioLanguages = resolvePreferredAudioLanguages(
                 preferredAudioLanguage = playerSettings.preferredAudioLanguage,
@@ -251,10 +261,12 @@ internal fun PlayerRuntimeController.initializePlayer(
                 .setTsExtractorTimestampSearchBytes(1500 * TsExtractor.TS_PACKET_SIZE)
 
             
+            audioDelayUs.set(_uiState.value.audioDelayMs.toLong() * 1000L)
             subtitleDelayUs.set(_uiState.value.subtitleDelayMs.toLong() * 1000L)
             val renderersFactory = SubtitleOffsetRenderersFactory(
                 context = context,
                 subtitleDelayUsProvider = subtitleDelayUs::get,
+                audioDelayUsProvider = audioDelayUs::get,
                 shouldNormalizeCuePositionProvider = {
                     val selectedAddonSubtitle = _uiState.value.selectedAddonSubtitle
                     selectedAddonSubtitle != null &&
@@ -348,11 +360,12 @@ internal fun PlayerRuntimeController.initializePlayer(
                         subtitleConfigurations = startupSubtitleConfigurations,
                         filename = currentFilename,
                         responseHeaders = currentStreamResponseHeaders,
-                        mimeTypeOverride = currentStreamMimeType
+                        mimeTypeOverride = currentStreamMimeType,
+                        audioDelayUsProvider = audioDelayUs::get
                     )
                 )
                 if (showLoadingStatus) _uiState.update { it.copy(loadingMessage = context.getString(R.string.player_loading_starting)) }
-                playWhenReady = true
+                playWhenReady = !startPaused
                 prepare()
 
                 addListener(object : Player.Listener {
@@ -466,6 +479,22 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
                         val detailedError = error.toDisplayMessage()
+
+                        // If the codec crashed while the app is in the background (e.g. another
+                        // app reclaimed the hardware decoder), don't run the retry chain — each
+                        // retry can further corrupt vendor codec state and may resume playback
+                        // in background. Save position, free resources, and rebuild on resume.
+                        if (isInBackground && isRetryablePlaybackError(error)) {
+                            val savedPosition = currentPosition.takeIf { it > 0L } ?: 0L
+                            backgroundCrashSavedPositionMs = savedPosition
+                            pendingBackgroundCrashRecovery = true
+                            errorRetryJob?.cancel()
+                            errorRetryJob = scope.launch {
+                                releasePlayer(flushPlaybackState = false)
+                            }
+                            return
+                        }
+
                         val responseCode = error.findInvalidResponseCodeException()?.responseCode
                         if (responseCode == 416 && !hasRetriedCurrentStreamAfter416) {
                             retryCurrentStreamFromStartAfter416()
@@ -759,6 +788,7 @@ internal fun PlayerRuntimeController.resetLoadingOverlayForNewStream() {
 private class SubtitleOffsetRenderersFactory(
     context: Context,
     private val subtitleDelayUsProvider: () -> Long,
+    private val audioDelayUsProvider: () -> Long,
     private val shouldNormalizeCuePositionProvider: () -> Boolean,
     private val gainAudioProcessor: GainAudioProcessor,
     private val playbackSpeedProvider: () -> Float,
@@ -847,7 +877,11 @@ private class SubtitleOffsetRenderersFactory(
         val startIndex = out.size
         super.buildTextRenderers(context, normalizingOutput, outputLooper, extensionRendererMode, out)
         for (index in startIndex until out.size) {
-            out[index] = SubtitleOffsetRenderer(out[index], subtitleDelayUsProvider)
+            out[index] = SubtitleOffsetRenderer(
+                baseRenderer = out[index],
+                subtitleDelayUsProvider = subtitleDelayUsProvider,
+                audioDelayUsProvider = audioDelayUsProvider
+            )
         }
     }
 }
@@ -926,12 +960,14 @@ private class CueNormalizingTextOutput(
 
 private class SubtitleOffsetRenderer(
     private val baseRenderer: Renderer,
-    private val subtitleDelayUsProvider: () -> Long
+    private val subtitleDelayUsProvider: () -> Long,
+    private val audioDelayUsProvider: () -> Long
 ) : ForwardingRenderer(baseRenderer) {
 
     override fun render(positionUs: Long, elapsedRealtimeUs: Long) {
-        val offset = subtitleDelayUsProvider()
-        val adjustedPositionUs = (positionUs - offset).coerceAtLeast(0L)
+        val subtitleOffsetUs = subtitleDelayUsProvider()
+        val audioOffsetUs = audioDelayUsProvider()
+        val adjustedPositionUs = (positionUs + audioOffsetUs - subtitleOffsetUs).coerceAtLeast(0L)
         
         super.render(adjustedPositionUs, elapsedRealtimeUs)
     }

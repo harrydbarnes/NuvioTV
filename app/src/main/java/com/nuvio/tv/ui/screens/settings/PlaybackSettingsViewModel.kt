@@ -96,6 +96,10 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setSkipSilence(enabled)
     }
 
+    suspend fun setRememberAudioDelayPerDevice(enabled: Boolean) {
+        playerSettingsDataStore.setRememberAudioDelayPerDevice(enabled)
+    }
+
     suspend fun setPreferredAudioLanguage(language: String) {
         playerSettingsDataStore.setPreferredAudioLanguage(language)
     }
@@ -130,6 +134,11 @@ class PlaybackSettingsViewModel @Inject constructor(
 
     suspend fun setResolutionMatchingEnabled(enabled: Boolean) {
         playerSettingsDataStore.setResolutionMatchingEnabled(enabled)
+    }
+
+    suspend fun disableAfrAndResolution() {
+        playerSettingsDataStore.setFrameRateMatchingMode(FrameRateMatchingMode.OFF)
+        playerSettingsDataStore.setResolutionMatchingEnabled(false)
     }
 
     suspend fun setMapDV7ToHevc(enabled: Boolean) {
