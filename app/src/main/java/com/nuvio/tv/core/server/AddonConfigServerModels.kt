@@ -120,8 +120,7 @@ data class PageState(
     val addons: List<AddonInfo>,
     val catalogs: List<CatalogInfo>,
     val collections: List<CollectionInfo> = emptyList(),
-    val disabledCollectionKeys: List<String> = emptyList(),
-    val followAddonsOrder: Boolean = false
+    val disabledCollectionKeys: List<String> = emptyList()
 )
 
 data class PendingAddonChange(
@@ -131,7 +130,6 @@ data class PendingAddonChange(
     val proposedDisabledCatalogKeys: List<String> = emptyList(),
     val proposedCollectionsJson: String? = null,
     val proposedDisabledCollectionKeys: List<String> = emptyList(),
-    val proposedFollowAddonsOrder: Boolean? = null,
     var status: AddonChangeStatus = AddonChangeStatus.PENDING
 )
 

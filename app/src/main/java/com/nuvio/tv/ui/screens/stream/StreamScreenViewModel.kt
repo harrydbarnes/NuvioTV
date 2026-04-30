@@ -60,7 +60,6 @@ class StreamScreenViewModel @Inject constructor(
     private var directAutoPlayFlowEnabledForSession = false
     private var streamLoadJob: Job? = null
     private var sourceChipErrorDismissJob: Job? = null
-    private var pendingCacheSaveJob: Job? = null
 
     private val videoId: String = savedStateHandle["videoId"] ?: ""
     private val contentType: String = savedStateHandle["contentType"] ?: ""
@@ -728,7 +727,7 @@ class StreamScreenViewModel @Inject constructor(
 
         val url = playbackInfo.url
         if (!url.isNullOrBlank() && !playbackInfo.isExternal) {
-            pendingCacheSaveJob = viewModelScope.launch {
+            viewModelScope.launch {
                 streamLinkCacheDataStore.save(
                     contentKey = streamCacheKey,
                     url = url,
@@ -743,10 +742,6 @@ class StreamScreenViewModel @Inject constructor(
         }
 
         return playbackInfo
-    }
-
-    suspend fun awaitStreamLinkCacheSave() {
-        pendingCacheSaveJob?.join()
     }
 
     override fun onCleared() {

@@ -270,9 +270,7 @@ interface TraktApi {
         @Header("Authorization") authorization: String,
         @Path("id") id: String,
         @Path("list_id") listId: String,
-        @Path("type") type: String,
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 100
+        @Path("type") type: String
     ): Response<List<TraktListItemDto>>
 
     @POST("users/{id}/lists/{list_id}/items")
@@ -294,9 +292,7 @@ interface TraktApi {
     @GET("sync/watchlist/{type}")
     suspend fun getWatchlist(
         @Header("Authorization") authorization: String,
-        @Path("type") type: String,
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 100
+        @Path("type") type: String
     ): Response<List<TraktListItemDto>>
 
     @POST("sync/watchlist")

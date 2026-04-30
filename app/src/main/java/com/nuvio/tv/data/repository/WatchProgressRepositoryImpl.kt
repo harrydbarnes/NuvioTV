@@ -231,17 +231,12 @@ class WatchProgressRepositoryImpl @Inject constructor(
         )
     }
 
-    @OptIn(FlowPreview::class)
     private fun useTraktProgressFlow(): Flow<Boolean> {
         return combine(
             traktAuthDataStore.isEffectivelyAuthenticated,
             traktSettingsDataStore.watchProgressSource
         ) { isEffectivelyAuthenticated, source ->
-            source == WatchProgressSource.TRAKT && isEffectivelyAuthenticated
-        }.debounce { useTrakt ->
-            // Debounce only the false -> transition to avoid reacting to transient
-            // auth unavailability during profile switches.  true→ is immediate.
-            if (useTrakt) 0L else 300L
+            isEffectivelyAuthenticated && source == WatchProgressSource.TRAKT
         }.distinctUntilChanged()
     }
 

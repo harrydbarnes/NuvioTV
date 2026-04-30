@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -181,8 +182,6 @@ private fun TmdbEntityBrowseContent(
     val localDensity = LocalDensity.current
     val focusedItemIndexByRail = remember { mutableMapOf<String, Int>() }
     val railListStates = remember { mutableMapOf<String, LazyListState>() }
-    val firstCardFocusRequester = remember(data.header.id) { FocusRequester() }
-    var initialFocusRequested by rememberSaveable(data.header.id) { mutableStateOf(false) }
 
     val backgroundRequest = rememberBackgroundRequest(
         data = data,
@@ -246,16 +245,14 @@ private fun TmdbEntityBrowseContent(
                         contentPadding = PaddingValues(top = 8.dp, bottom = railsTailPadding),
                         verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        itemsIndexed(
+                        items(
                             items = data.rails,
-                            key = { _, rail -> "${rail.mediaType.value}_${rail.railType.value}" }
-                        ) { railIndex, rail ->
+                            key = { rail -> "${rail.mediaType.value}_${rail.railType.value}" }
+                        ) { rail ->
                             val railKey = "${rail.mediaType.value}_${rail.railType.value}"
                             val rememberedFocusedIndex = focusedItemIndexByRail[railKey] ?: 0
                             EntityRailRow(
                                 rail = rail,
-                                initialFocusRequester = if (railIndex == 0) firstCardFocusRequester else null,
-                                shouldRequestInitialFocus = railIndex == 0 && !initialFocusRequested && pendingRestoreItemId == null,
                                 rememberedFocusedIndex = rememberedFocusedIndex,
                                 rowListState = railListStates.getOrPut(railKey) {
                                     LazyListState(
@@ -266,7 +263,6 @@ private fun TmdbEntityBrowseContent(
                                 posterCardStyle = posterCardStyle,
                                 restoreItemId = pendingRestoreItemId,
                                 restoreFocusToken = restoreFocusToken,
-                                onInitialFocusHandled = { initialFocusRequested = true },
                                 onRestoreFocusHandled = { pendingRestoreItemId = null },
                                 onFocusedItemIndexChanged = { focusedIndex ->
                                     focusedItemIndexByRail[railKey] = focusedIndex
@@ -420,14 +416,11 @@ private fun TmdbEntityHero(
 @Composable
 private fun EntityRailRow(
     rail: TmdbEntityRail,
-    initialFocusRequester: FocusRequester?,
-    shouldRequestInitialFocus: Boolean,
     rememberedFocusedIndex: Int,
     rowListState: LazyListState,
     posterCardStyle: PosterCardStyle,
     restoreItemId: String?,
     restoreFocusToken: Int,
-    onInitialFocusHandled: () -> Unit,
     onRestoreFocusHandled: () -> Unit,
     onFocusedItemIndexChanged: (Int) -> Unit,
     onItemClick: (MetaPreview) -> Unit,
@@ -442,22 +435,6 @@ private fun EntityRailRow(
     val initialFocusIndex = rememberedFocusedIndex
         .coerceIn(0, (rail.items.size - 1).coerceAtLeast(0))
     var lastLoadMoreRequestTotal by remember(rail.mediaType, rail.railType) { mutableIntStateOf(-1) }
-
-    LaunchedEffect(shouldRequestInitialFocus, initialFocusRequester, rail.items.firstOrNull()?.id) {
-        if (!shouldRequestInitialFocus || initialFocusRequester == null || rail.items.isEmpty()) return@LaunchedEffect
-        repeat(2) { withFrameNanos { } }
-        repeat(4) { attempt ->
-            val focused = runCatching {
-                initialFocusRequester.requestFocus()
-                true
-            }.getOrDefault(false)
-            if (focused) {
-                onInitialFocusHandled()
-                return@LaunchedEffect
-            }
-            if (attempt < 3) withFrameNanos { }
-        }
-    }
 
     LaunchedEffect(restoreItemId, restoreFocusToken) {
         if (restoreFocusToken <= 0 || restoreItemId == null) return@LaunchedEffect
@@ -532,12 +509,7 @@ private fun EntityRailRow(
                 items = rail.items,
                 key = { _, item -> item.id }
             ) { itemIndex, item ->
-                val requester = if (itemIndex == 0 && initialFocusRequester != null) {
-                    focusRequesters[item.id] = initialFocusRequester
-                    initialFocusRequester
-                } else {
-                    focusRequesters.getOrPut(item.id) { FocusRequester() }
-                }
+                val requester = focusRequesters.getOrPut(item.id) { FocusRequester() }
                 GridContentCard(
                     item = item,
                     onClick = { onItemClick(item) },

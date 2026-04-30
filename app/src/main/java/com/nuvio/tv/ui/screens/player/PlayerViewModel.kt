@@ -8,7 +8,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.torrent.TorrentService
 import com.nuvio.tv.core.torrent.TorrentSettings
-import com.nuvio.tv.data.local.AudioDelayRouteDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.DeviceLocalPlayerPreferences
 import com.nuvio.tv.data.local.StreamLinkCacheDataStore
@@ -47,7 +46,6 @@ class PlayerViewModel @Inject constructor(
     private val layoutPreferenceDataStore: com.nuvio.tv.data.local.LayoutPreferenceDataStore,
     private val watchedItemsPreferences: com.nuvio.tv.data.local.WatchedItemsPreferences,
     private val trackPreferenceDataStore: com.nuvio.tv.data.local.TrackPreferenceDataStore,
-    private val audioDelayRouteDataStore: AudioDelayRouteDataStore,
     private val torrentService: TorrentService,
     private val torrentSettings: TorrentSettings,
     private val tmdbService: TmdbService,
@@ -74,7 +72,6 @@ class PlayerViewModel @Inject constructor(
         layoutPreferenceDataStore = layoutPreferenceDataStore,
         watchedItemsPreferences = watchedItemsPreferences,
         trackPreferenceDataStore = trackPreferenceDataStore,
-        audioDelayRouteDataStore = audioDelayRouteDataStore,
         torrentService = torrentService,
         torrentSettings = torrentSettings,
         tmdbService = tmdbService,

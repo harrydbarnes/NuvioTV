@@ -478,8 +478,7 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
                 subtitleConfigurations = subtitleConfigurations,
                 filename = currentFilename,
                 responseHeaders = currentStreamResponseHeaders,
-                mimeTypeOverride = currentStreamMimeType,
-                audioDelayUsProvider = audioDelayUs::get
+                mimeTypeOverride = currentStreamMimeType
             ),
             currentPosition
         )

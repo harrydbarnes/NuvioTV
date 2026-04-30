@@ -67,8 +67,7 @@ internal class PlayerMediaSourceFactory {
         subtitleConfigurations: List<MediaItem.SubtitleConfiguration> = emptyList(),
         filename: String? = null,
         responseHeaders: Map<String, String> = emptyMap(),
-        mimeTypeOverride: String? = null,
-        audioDelayUsProvider: (() -> Long)? = null
+        mimeTypeOverride: String? = null
     ): MediaSource {
         val sanitizedHeaders = sanitizeHeaders(headers)
         val httpDataSourceFactory = PlayerPlaybackNetworking.createDataSourceFactory(context, sanitizedHeaders)
@@ -99,13 +98,10 @@ internal class PlayerMediaSourceFactory {
 
         // Sidecar subtitles are more reliable through DefaultMediaSourceFactory.
         if (subtitleConfigurations.isNotEmpty()) {
-            return wrapAudioDelay(
-                mediaSource = defaultFactory.createMediaSource(mediaItem),
-                audioDelayUsProvider = audioDelayUsProvider
-            )
+            return defaultFactory.createMediaSource(mediaItem)
         }
 
-        val mediaSource = when {
+        return when {
             isHls && !forceDefaultFactory -> HlsMediaSource.Factory(httpDataSourceFactory)
                 .setAllowChunklessPreparation(true)
                 .createMediaSource(mediaItem)
@@ -113,7 +109,6 @@ internal class PlayerMediaSourceFactory {
                 .createMediaSource(mediaItem)
             else -> defaultFactory.createMediaSource(mediaItem)
         }
-        return wrapAudioDelay(mediaSource = mediaSource, audioDelayUsProvider = audioDelayUsProvider)
     }
 
     fun shutdown() = Unit
@@ -463,20 +458,6 @@ internal class PlayerMediaSourceFactory {
             val read = inputStream.read(buffer)
             if (read <= 0) return null
             return String(buffer, 0, read, Charsets.UTF_8)
-        }
-
-        private fun wrapAudioDelay(
-            mediaSource: MediaSource,
-            audioDelayUsProvider: (() -> Long)?
-        ): MediaSource {
-            return if (audioDelayUsProvider == null) {
-                mediaSource
-            } else {
-                AudioDelayMediaSource(
-                    mediaSource = mediaSource,
-                    audioDelayUsProvider = audioDelayUsProvider
-                )
-            }
         }
 
         private fun readResponseHeaders(connection: HttpURLConnection): Map<String, String> {

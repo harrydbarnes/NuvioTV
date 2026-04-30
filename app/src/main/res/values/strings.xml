@@ -447,8 +447,6 @@
     <string name="audio_preferred_lang">Preferred Audio Language</string>
     <string name="audio_skip_silence">Skip Silence</string>
     <string name="audio_skip_silence_sub">Skip silent portions of audio during playback</string>
-    <string name="audio_remember_delay_per_device">Remember audio delay per device</string>
-    <string name="audio_remember_delay_per_device_sub">Save and restore the in-player audio delay for the current audio output route</string>
     <string name="audio_advanced_section">Advanced Audio</string>
     <string name="audio_advanced_warning">These settings may cause issues on some devices. Change only if you know what you\'re doing.</string>
     <string name="audio_decoder_device_only">Device decoders only</string>
@@ -480,8 +478,8 @@
     <string name="sub_not_set">Not set</string>
     <string name="sub_forced_lang">Forced</string>
     <string name="sub_preferred_lang">Preferred Language</string>
-    <string name="sub_hide_unpreferred">Show Only preferred languages</string>
-    <string name="sub_hide_unpreferred_sub">Hide all other subtitle languages from the UI</string>
+    <string name="sub_hide_unpreferred">Show Only Preferred Languages</string>
+    <string name="sub_hide_unpreferred_sub">Hide all other subtitles languages from selection list</string>
     <string name="sub_secondary_lang">Secondary Preferred Language</string>
     <string name="sub_organization">Subtitle Organization</string>
     <string name="sub_size">Size</string>
@@ -939,8 +937,6 @@
     <!-- CatalogOrderScreen -->
     <string name="catalog_order_title">Reorder Home Catalogs</string>
     <string name="catalog_order_subtitle">This controls catalog row order on Home (Classic + Modern + Grid).</string>
-    <string name="catalog_order_follow_addons">Follow addons order</string>
-    <string name="catalog_order_follow_addons_desc">Catalogs follow addon manifest order. Collections can still be moved between addons.</string>
     <string name="catalog_order_empty">No home catalogs available yet.</string>
     <string name="catalog_order_disabled_on_home">Disabled on Home</string>
     <string name="catalog_order_enable">Enable</string>
@@ -1060,8 +1056,6 @@
     <string name="audio_dialog_title">Audio</string>
     <string name="audio_dialog_tab_tracks">Audio</string>
     <string name="audio_dialog_tab_mix">Mix</string>
-    <string name="audio_delay_label">Audio Delay</string>
-    <string name="audio_delay_range">Range: %1$.2fs to %2$.2fs</string>
     <string name="audio_mix_label">Amplification (PCM)</string>
     <string name="audio_mix_value_db">%1$d dB</string>
     <string name="audio_mix_persist_on">Persist between sessions: ON</string>

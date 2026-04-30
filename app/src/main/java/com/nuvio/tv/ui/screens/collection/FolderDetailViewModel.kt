@@ -747,8 +747,7 @@ class FolderDetailViewModel @Inject constructor(
         } else {
             typeLabel
         }
-        val effectiveGenre = source.genre?.takeIf { it.isNotBlank() && !it.equals("None", ignoreCase = true) }
-        val name = effectiveGenre?.let { "$baseName · $it" } ?: baseName
+        val name = source.genre?.takeIf { it.isNotBlank() }?.let { "$baseName · $it" } ?: baseName
         return name to typeLabel
     }
 
@@ -769,7 +768,7 @@ class FolderDetailViewModel @Inject constructor(
     }
 
     private fun buildCatalogExtraArgs(source: AddonCatalogCollectionSource): Map<String, String> {
-        val genre = source.genre?.takeIf { it.isNotBlank() && !it.equals("None", ignoreCase = true) } ?: return emptyMap()
+        val genre = source.genre?.takeIf { it.isNotBlank() } ?: return emptyMap()
         return mapOf("genre" to genre)
     }
 

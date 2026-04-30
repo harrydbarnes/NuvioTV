@@ -131,6 +131,18 @@ internal fun LazyListScope.subtitleSettingsItems(
         )
     }
 
+    item(key = "subtitle_hide_unpreferred") {
+        ToggleSettingsItem(
+            icon = Icons.Default.Subtitles,
+            title = stringResource(R.string.sub_hide_unpreferred),
+            subtitle = stringResource(R.string.sub_hide_unpreferred_sub),
+            isChecked = playerSettings.subtitleStyle.hideUnpreferredLanguages,
+            onCheckedChange = onSetSubtitleHideUnpreferredLanguages,
+            onFocused = onItemFocused,
+            enabled = enabled
+        )
+    }
+
     item(key = "subtitle_startup_mode") {
         NavigationSettingsItem(
             icon = Icons.Default.Subtitles,
@@ -230,18 +242,6 @@ internal fun LazyListScope.subtitleSettingsItems(
                 enabled = enabled
             )
         }
-    }
-
-    item(key = "subtitle_hide_unpreferred") {
-        ToggleSettingsItem(
-            icon = Icons.Default.Subtitles,
-            title = stringResource(R.string.sub_hide_unpreferred),
-            subtitle = stringResource(R.string.sub_hide_unpreferred_sub),
-            isChecked = playerSettings.subtitleStyle.hideUnpreferredLanguages,
-            onCheckedChange = onSetSubtitleHideUnpreferredLanguages,
-            onFocused = onItemFocused,
-            enabled = enabled
-        )
     }
 
     item(key = "subtitle_advanced_header") {

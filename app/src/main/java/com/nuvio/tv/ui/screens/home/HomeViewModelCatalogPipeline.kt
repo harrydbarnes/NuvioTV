@@ -56,16 +56,6 @@ internal fun HomeViewModel.loadHomeCatalogOrderPreferencePipeline() {
     }
 }
 
-internal fun HomeViewModel.loadFollowAddonsOrderPipeline() {
-    viewModelScope.launch {
-        layoutPreferenceDataStore.followAddonsOrder.collectLatest { enabled ->
-            followAddonsOrderEnabled = enabled
-            rebuildCatalogOrder(addonsCache)
-            scheduleUpdateCatalogRows()
-        }
-    }
-}
-
 internal fun HomeViewModel.loadDisabledHomeCatalogPreferencePipeline() {
     viewModelScope.launch {
         layoutPreferenceDataStore.disabledHomeCatalogKeys.collectLatest { keys ->

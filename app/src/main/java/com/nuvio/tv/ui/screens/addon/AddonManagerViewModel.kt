@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.sync.CollectionSyncService
 import com.nuvio.tv.core.sync.HomeCatalogSettingsSyncService
-import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.sync.homeCatalogKey
 import com.nuvio.tv.core.sync.homeLegacyDisabledCatalogKey
 import com.nuvio.tv.core.network.NetworkResult
@@ -60,7 +59,6 @@ class AddonManagerViewModel @Inject constructor(
     private val collectionsDataStore: CollectionsDataStore,
     private val collectionSyncService: CollectionSyncService,
     private val homeCatalogSettingsSyncService: HomeCatalogSettingsSyncService,
-    private val startupSyncService: StartupSyncService,
     private val profileManager: ProfileManager,
     private val tmdbCollectionSourceResolver: TmdbCollectionSourceResolver,
     @ApplicationContext private val context: Context
@@ -81,7 +79,6 @@ class AddonManagerViewModel @Inject constructor(
     private var logoBytes: ByteArray? = null
     private var homeCatalogOrderKeys: List<String> = emptyList()
     private var disabledHomeCatalogKeys: Set<String> = emptySet()
-    private var followAddonsOrderEnabled: Boolean = false
     private var currentCollections: List<Collection> = emptyList()
 
     init {
@@ -89,10 +86,6 @@ class AddonManagerViewModel @Inject constructor(
         observeCatalogPreferences()
         observeCollections()
         loadLogoBytes()
-    }
-
-    fun requestAddonSyncNow() {
-        startupSyncService.requestAddonSyncNow()
     }
 
     private fun loadLogoBytes() {
@@ -266,52 +259,12 @@ class AddonManagerViewModel @Inject constructor(
                         isDisabled = colKey in disabledHomeCatalogKeys
                     )
                 }
-
-                val unifiedCatalogs: List<CatalogInfo>
-                if (followAddonsOrderEnabled) {
-                    // In follow mode: addon catalogs in manifest order, collections placed by saved position
-                    val addonKeys = catalogInfos.map { it.key }
-                    val collectionKeysSet = collectionInfos.map { it.key }.toSet()
-                    val catalogByKey = (catalogInfos + collectionInfos).associateBy { it.key }
-                    val savedValid = homeCatalogOrderKeys.filter { it in catalogByKey }.distinct()
-
-                    if (savedValid.isNotEmpty()) {
-                        val result = mutableListOf<String>()
-                        var addonPointer = 0
-                        for (savedKey in savedValid) {
-                            if (savedKey in collectionKeysSet) {
-                                result.add(savedKey)
-                            } else {
-                                val targetIdx = addonKeys.indexOf(savedKey)
-                                if (targetIdx >= 0) {
-                                    while (addonPointer <= targetIdx) {
-                                        val ak = addonKeys[addonPointer]
-                                        if (ak !in result) result.add(ak)
-                                        addonPointer++
-                                    }
-                                }
-                            }
-                        }
-                        while (addonPointer < addonKeys.size) {
-                            val ak = addonKeys[addonPointer]
-                            if (ak !in result) result.add(ak)
-                            addonPointer++
-                        }
-                        for (ck in collectionKeysSet) {
-                            if (ck !in result) result.add(ck)
-                        }
-                        unifiedCatalogs = result.mapNotNull { catalogByKey[it] }
-                    } else {
-                        unifiedCatalogs = catalogInfos + collectionInfos
-                    }
-                } else {
-                    // Interleave based on saved order
-                    val catalogByKey = (catalogInfos + collectionInfos).associateBy { it.key }
-                    val savedOrder = homeCatalogOrderKeys
-                    val orderedKeys = savedOrder.filter { it in catalogByKey }
-                    val unseenKeys = catalogByKey.keys - orderedKeys.toSet()
-                    unifiedCatalogs = (orderedKeys + unseenKeys).mapNotNull { catalogByKey[it] }
-                }
+                // Interleave based on saved order
+                val catalogByKey = (catalogInfos + collectionInfos).associateBy { it.key }
+                val savedOrder = homeCatalogOrderKeys
+                val orderedKeys = savedOrder.filter { it in catalogByKey }
+                val unseenKeys = catalogByKey.keys - orderedKeys.toSet()
+                val unifiedCatalogs = (orderedKeys + unseenKeys).mapNotNull { catalogByKey[it] }
 
                 PageState(
                     addons = addons.map { addon ->
@@ -324,8 +277,7 @@ class AddonManagerViewModel @Inject constructor(
                     catalogs = unifiedCatalogs,
                     collections = collectionsToServerFormat(currentCollections),
                     disabledCollectionKeys = disabledHomeCatalogKeys
-                        .filter { it.startsWith("collection_") },
-                    followAddonsOrder = followAddonsOrderEnabled
+                        .filter { it.startsWith("collection_") }
                 )
             },
             onChangeProposed = { change -> handleChangeProposed(change) },
@@ -518,8 +470,7 @@ class AddonManagerViewModel @Inject constructor(
                     collectionsChanged = collectionsChanged,
                     proposedCollectionsJson = proposedCollectionsJson,
                     proposedCollectionCount = proposedCollectionCount,
-                    proposedDisabledCollectionKeys = proposedDisabledCollectionKeys,
-                    proposedFollowAddonsOrder = change.proposedFollowAddonsOrder
+                    proposedDisabledCollectionKeys = proposedDisabledCollectionKeys
                 )
             )
         }
@@ -566,10 +517,6 @@ class AddonManagerViewModel @Inject constructor(
                 val mergedDisabledKeys = nonCollectionDisabledKeys + pending.proposedDisabledCollectionKeys
                 layoutPreferenceDataStore.setDisabledHomeCatalogKeys(mergedDisabledKeys)
                 homeCatalogSettingsSyncService.triggerPush()
-            }
-            // Apply follow addons order change
-            if (pending.proposedFollowAddonsOrder != null) {
-                layoutPreferenceDataStore.setFollowAddonsOrder(pending.proposedFollowAddonsOrder)
             }
             server?.confirmChange(pending.changeId)
 
@@ -638,11 +585,6 @@ class AddonManagerViewModel @Inject constructor(
         viewModelScope.launch {
             layoutPreferenceDataStore.disabledHomeCatalogKeys.collect { keys ->
                 disabledHomeCatalogKeys = keys.toSet()
-            }
-        }
-        viewModelScope.launch {
-            layoutPreferenceDataStore.followAddonsOrder.collect { enabled ->
-                followAddonsOrderEnabled = enabled
             }
         }
     }

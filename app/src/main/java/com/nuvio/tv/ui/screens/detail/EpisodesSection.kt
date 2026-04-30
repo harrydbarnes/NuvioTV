@@ -82,10 +82,8 @@ import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.theme.NuvioColors
 import com.nuvio.tv.ui.theme.NuvioTheme
-import com.nuvio.tv.ui.theme.ThemeColors
 import android.text.format.DateFormat
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -819,14 +817,13 @@ private fun EpisodeCard(
                             top = cardMetrics.statusBadgeInset
                         )
                         .size(cardMetrics.statusBadgeSize)
-                        .shadow(10.dp, shape = CircleShape)
-                        .background(NuvioColors.Secondary, CircleShape),
+                        .background(primaryColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = strCdWatched,
-                        tint = if (NuvioColors.Secondary == ThemeColors.White.secondary) Color.Black else Color.White,
+                        tint = Color.White,
                         modifier = Modifier.size(cardMetrics.statusIconSize)
                     )
                 }
