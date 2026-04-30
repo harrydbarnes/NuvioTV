@@ -169,6 +169,10 @@ class PlaybackSettingsViewModel @Inject constructor(
         playerSettingsDataStore.setSubtitleSecondaryLanguage(language)
     }
 
+    suspend fun setSubtitleUseForcedWhenAudioMatches(enabled: Boolean) {
+        playerSettingsDataStore.setSubtitleUseForcedWhenAudioMatches(enabled)
+    }
+
     suspend fun setSubtitleSize(size: Int) {
         playerSettingsDataStore.setSubtitleSize(size)
     }
@@ -290,4 +294,5 @@ class PlaybackSettingsViewModel @Inject constructor(
     suspend fun setStreamReuseLastLinkCacheHours(hours: Int) {
         playerSettingsDataStore.setStreamReuseLastLinkCacheHours(hours)
     }
+
 }

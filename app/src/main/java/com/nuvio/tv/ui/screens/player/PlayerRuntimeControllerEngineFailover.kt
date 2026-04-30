@@ -649,9 +649,15 @@ private fun PlayerRuntimeController.pickUiInternalSubtitleTrackForEngineSwitchFa
         return it
     }
 
+    val currentAudioTrack = state.audioTracks.getOrNull(state.selectedAudioTrackIndex)
+    val audioLang = currentAudioTrack?.language
+    val useForced = state.subtitleStyle.useForcedSubtitlesWhenAudioMatches
+
     val preferredIndex = findBestInternalSubtitleTrackIndex(
         subtitleTracks = state.subtitleTracks,
-        targets = subtitleLanguageTargets()
+        targets = subtitleLanguageTargets(),
+        audioLang = audioLang,
+        useForcedSubtitlesWhenAudioMatches = useForced
     )
     if (preferredIndex >= 0) {
         state.subtitleTracks.getOrNull(preferredIndex)?.let {

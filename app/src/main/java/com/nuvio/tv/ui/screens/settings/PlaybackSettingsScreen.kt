@@ -214,6 +214,9 @@ fun PlaybackSettingsContent(
                 onShowMpvHardwareDecodeModeDialog = { openDialog { showMpvHardwareDecodeModeDialog = true } },
                 onShowLanguageDialog = { openDialog { showLanguageDialog = true } },
                 onShowSecondaryLanguageDialog = { openDialog { showSecondaryLanguageDialog = true } },
+                onSetUseForcedWhenAudioMatches = { enabled ->
+                    coroutineScope.launch { viewModel.setSubtitleUseForcedWhenAudioMatches(enabled) }
+                },
                 onShowSubtitleStartupModeDialog = { openDialog { showSubtitleStartupModeDialog = true } },
                 onShowTextColorDialog = { openDialog { showTextColorDialog = true } },
                 onShowBackgroundColorDialog = { openDialog { showBackgroundColorDialog = true } },

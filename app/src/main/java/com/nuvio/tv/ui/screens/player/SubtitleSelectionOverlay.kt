@@ -1711,7 +1711,7 @@ private fun preferredOverlayLanguageOrder(
     fun toOverlayLanguageKey(language: String?): String? {
         if (language.isNullOrBlank()) return null
         val normalized = PlayerSubtitleUtils.normalizeLanguageCode(language)
-        if (normalized == "none" || normalized == SUBTITLE_LANGUAGE_FORCED) return null
+        if (normalized == "none") return null
         return normalizeOverlayLanguageKey(language)
             .takeUnless { it == SubtitleUnknownLanguageKey }
     }
