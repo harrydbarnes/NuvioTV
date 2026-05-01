@@ -958,7 +958,7 @@ private fun ModernSidebarScaffold(
 ) {
     val showSidebar = currentRoute in rootRoutes
     val collapsedSidebarWidth = if (sidebarCollapsed) 0.dp else 184.dp
-    val openSidebarWidth = 262.dp
+    val openSidebarWidth = 224.dp
 
     val focusManager = LocalFocusManager.current
     val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl

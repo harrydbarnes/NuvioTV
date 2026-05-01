@@ -1,0 +1,66 @@
+Downloading https://services.gradle.org/distributions/gradle-8.13-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 8.13!
+
+Here are the highlights of this release:
+ - Daemon JVM auto-provisioning
+ - Enhancements for Scala plugin and JUnit testing
+ - Improvements for build authors and plugin developers
+
+For more details see https://docs.gradle.org/8.13/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preFullDebugBuild UP-TO-DATE
+> Task :app:mergeFullDebugJniLibFolders
+> Task :app:mergeFullDebugNativeLibs
+> Task :app:mergeFullDebugArtProfile
+> Task :app:checkFullDebugDuplicateClasses
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateFullDebugBuildConfig
+> Task :app:expandFullDebugL8ArtProfileWildcards
+> Task :app:checkFullDebugAarMetadata
+> Task :app:processFullDebugNavigationResources
+
+> Task :app:stripFullDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libass.so, libasskt.so, libavcodec.so, libavdevice.so, libavfilter.so, libavformat.so, libavutil.so, libc++_shared.so, libconscrypt_jni.so, libdatastore_shared_counter.so, libffmpegJNI.so, libgav1JNI.so, libiamf.so, libiamfJNI.so, libmediainfo.so, libmpeghJNI.so, libmpv.so, libplayer.so, libquickjs.so, libswresample.so, libswscale.so, libtorrserver.so, libxml2.so. Run with --info option to learn more.
+
+> Task :app:generateFullDebugResValues
+> Task :app:compileFullDebugNavigationResources
+> Task :app:mapFullDebugSourceSetPaths
+> Task :app:generateFullDebugResources
+> Task :app:extractFullDebugNativeSymbolTables
+> Task :app:mergeFullDebugNativeDebugMetadata NO-SOURCE
+> Task :app:packageFullDebugResources
+> Task :app:createFullDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksFullDebug
+> Task :app:mergeFullDebugResources
+> Task :app:parseFullDebugLocalResources
+
+> Task :app:processFullDebugMainManifest
+/app/app/src/main/AndroidManifest.xml:36:9-41 Warning:
+	android:extractNativeLibs should not be specified in this source AndroidManifest.xml file. See https://d.android.com/guide/topics/manifest/application-element#extractNativeLibs for more information.
+The AGP Upgrade Assistant can remove the attribute from the AndroidManifest.xml file and update the build file accordingly. See https://d.android.com/studio/build/agp-upgrade-assistant for more information.
+
+> Task :app:processFullDebugManifest
+> Task :app:processFullDebugManifestForPackage
+> Task :app:javaPreCompileFullDebug
+> Task :app:mergeFullDebugStartupProfile
+> Task :app:mergeFullDebugShaders
+> Task :app:compileFullDebugShaders NO-SOURCE
+> Task :app:generateFullDebugAssets UP-TO-DATE
+> Task :app:mergeFullDebugAssets
+> Task :app:extractFullDebugVersionControlInfo
+> Task :app:extractProguardFiles
+> Task :app:compressFullDebugAssets
+> Task :app:processFullDebugResources
+> Task :app:collectFullDebugDependencies
+> Task :app:desugarFullDebugFileDependencies
+> Task :app:kspFullDebugKotlin
+> Task :app:mergeExtDexFullDebug
+> Task :app:sdkFullDebugDependencyData
+> Task :app:validateSigningFullDebug FAILED
+> Task :app:optimizeFullDebugResources
+> Task :app:compileFullDebugKotlin
