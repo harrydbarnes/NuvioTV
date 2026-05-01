@@ -481,11 +481,8 @@ private fun EpisodeCard(
         })
     }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
-        episode.thumbnail?.takeIf { it.isNotBlank() }
+        episode.thumbnail?.takeIf { it.isNotBlank() && it != "null" }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
-    }
-    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl) {
-        episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
     }
     val progressPercent = remember(watchProgress) { watchProgress?.progressPercentage ?: 0f }
     val showProgress = remember(progressPercent) { progressPercent >= 0.02f && progressPercent < 0.85f }
@@ -799,7 +796,7 @@ private fun EpisodeCard(
                                         imageVector = Icons.Outlined.Schedule,
                                         contentDescription = null,
                                         tint = textSecondary,
-                                        modifier = Modifier.size(cardMetrics.metadataIconSize * 0.9f)
+                                        modifier = Modifier.size(cardMetrics.metadataIconSize * 0.85f)
                                     )
                                 }
                                 Text(

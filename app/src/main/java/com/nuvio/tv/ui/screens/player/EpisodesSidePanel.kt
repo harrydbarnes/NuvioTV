@@ -476,7 +476,7 @@ private fun EpisodeItem(
         })
     }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
-        episode.thumbnail?.takeIf { it.isNotBlank() }
+        episode.thumbnail?.takeIf { it.isNotBlank() && it != "null" }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
     val episodeTitle = episode.title.localizeEpisodeTitle(context).ifBlank { context.getString(R.string.episodes_episode) }
@@ -601,7 +601,7 @@ private fun EpisodeItem(
                                 imageVector = Icons.Outlined.Schedule,
                                 contentDescription = null,
                                 tint = NuvioTheme.extendedColors.textTertiary,
-                                modifier = Modifier.size(12.dp)
+                                modifier = Modifier.size(11.4.dp)
                             )
                         }
                         Text(
