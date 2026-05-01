@@ -471,7 +471,15 @@ private fun EpisodeCard(
     val description = remember(episode.overview) { episode.overview?.trim().orEmpty() }
     val isWatched = remember(watchProgress, isMarkedWatched) { watchProgress?.isCompleted() == true || isMarkedWatched }
     val shouldBlur = remember(blurUnwatched, isWatched) { blurUnwatched && !isWatched }
-    val isUnavailable = remember(episode.available) { episode.available == false }
+    val isUnavailable = remember(episode.available, episode.released) {
+        episode.available == false || (episode.released != null && try {
+            java.time.Instant.parse(episode.released).isAfter(java.time.Instant.now())
+        } catch (_: Exception) {
+            try {
+                java.time.LocalDate.parse(episode.released.substringBefore('T')).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().isAfter(java.time.Instant.now())
+            } catch (_: Exception) { false }
+        })
+    }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }

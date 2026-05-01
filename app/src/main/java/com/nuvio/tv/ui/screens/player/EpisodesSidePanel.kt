@@ -466,7 +466,15 @@ private fun EpisodeItem(
 ) {
     val shouldBlur = blurUnwatched && !isWatched && !isCurrent
     val context = LocalContext.current
-    val isUnavailable = episode.available == false
+    val isUnavailable = remember(episode.available, episode.released) {
+        episode.available == false || (episode.released != null && try {
+            java.time.Instant.parse(episode.released).isAfter(java.time.Instant.now())
+        } catch (_: Exception) {
+            try {
+                java.time.LocalDate.parse(episode.released.substringBefore('T')).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().isAfter(java.time.Instant.now())
+            } catch (_: Exception) { false }
+        })
+    }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
