@@ -467,7 +467,7 @@ private fun EpisodeItem(
     val shouldBlur = blurUnwatched && !isWatched && !isCurrent
     val context = LocalContext.current
     val isUnavailable = episode.available == false
-    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
+    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }

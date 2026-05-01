@@ -472,11 +472,11 @@ private fun EpisodeCard(
     val isWatched = remember(watchProgress, isMarkedWatched) { watchProgress?.isCompleted() == true || isMarkedWatched }
     val shouldBlur = remember(blurUnwatched, isWatched) { blurUnwatched && !isWatched }
     val isUnavailable = remember(episode.available) { episode.available == false }
-    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
+    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
             ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
-    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl, isUnavailable) {
+    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl) {
         episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
     }
     val progressPercent = remember(watchProgress) { watchProgress?.progressPercentage ?: 0f }
@@ -678,7 +678,7 @@ private fun EpisodeCard(
                             ),
                             alpha = if (isFocusedState.value) 1f else 0.94f
                         )
-                        if (isFallbackArtwork && isUnavailable) {
+                        if (isUnavailable) {
                             drawRect(color = Color.Black.copy(alpha = 0.20f))
                         }
                     },
