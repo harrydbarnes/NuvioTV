@@ -474,10 +474,10 @@ private fun EpisodeCard(
     val isUnavailable = remember(episode.available) { episode.available == false }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
-            ?: fallbackArtworkUrl?.takeIf { isUnavailable && it.isNotBlank() }
+            ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
     val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl, isUnavailable) {
-        isUnavailable && episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
+        episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
     }
     val progressPercent = remember(watchProgress) { watchProgress?.progressPercentage ?: 0f }
     val showProgress = remember(progressPercent) { progressPercent >= 0.02f && progressPercent < 0.85f }
@@ -678,7 +678,7 @@ private fun EpisodeCard(
                             ),
                             alpha = if (isFocusedState.value) 1f else 0.94f
                         )
-                        if (isFallbackArtwork) {
+                        if (isFallbackArtwork && isUnavailable) {
                             drawRect(color = Color.Black.copy(alpha = 0.20f))
                         }
                     },
@@ -780,19 +780,20 @@ private fun EpisodeCard(
                                 )
                             }
                         }
-
                         if (formattedDate.isNotBlank()) {
                             Row(
                                 modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Schedule,
-                                    contentDescription = null,
-                                    tint = textSecondary,
-                                    modifier = Modifier.size(cardMetrics.metadataIconSize)
-                                )
+                                if (isUnavailable) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Schedule,
+                                        contentDescription = null,
+                                        tint = textSecondary,
+                                        modifier = Modifier.size(cardMetrics.metadataIconSize * 0.9f)
+                                    )
+                                }
                                 Text(
                                     text = formattedDate,
                                     style = metaLabelStyle,

@@ -469,10 +469,7 @@ private fun EpisodeItem(
     val isUnavailable = episode.available == false
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
         episode.thumbnail?.takeIf { it.isNotBlank() }
-            ?: fallbackArtworkUrl?.takeIf { isUnavailable && it.isNotBlank() }
-    }
-    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl, isUnavailable) {
-        isUnavailable && episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
+            ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
     val episodeTitle = episode.title.localizeEpisodeTitle(context).ifBlank { context.getString(R.string.episodes_episode) }
     val formattedDate = remember(episode.released) {
@@ -536,14 +533,6 @@ private fun EpisodeItem(
                     contentScale = ContentScale.Crop
                 )
 
-                if (isFallbackArtwork) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.20f))
-                    )
-                }
-
                 if (episodeCode != null) {
                     Box(
                         modifier = Modifier
@@ -596,15 +585,17 @@ private fun EpisodeItem(
 
                 if (formattedDate != null) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Schedule,
-                            contentDescription = null,
-                            tint = NuvioTheme.extendedColors.textTertiary,
-                            modifier = Modifier.size(14.dp)
-                        )
+                        if (isUnavailable) {
+                            Icon(
+                                imageVector = Icons.Outlined.Schedule,
+                                contentDescription = null,
+                                tint = NuvioTheme.extendedColors.textTertiary,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
                         Text(
                             text = formattedDate,
                             style = MaterialTheme.typography.bodySmall,
