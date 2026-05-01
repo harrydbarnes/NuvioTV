@@ -1373,7 +1373,7 @@ private fun MetaDetailsContent(
     }
     val hasHeroBackdrop = !heroBackdropUrl.isNullOrBlank()
     val seedBackdropUrl = heroBackdropUrl?.takeIf { it.isNotBlank() }
-    val backdropDataUrl = meta.backdropUrl ?: meta.poster
+    val backdropDataUrl = (meta.backdropUrl?.takeIf { it != "null" } ?: meta.poster?.takeIf { it != "null" })
     val shouldReuseSeedBackdrop = seedBackdropUrl != null && seedBackdropUrl == backdropDataUrl
     val shouldShowSeedBackdropUnderlay = seedBackdropUrl != null && !shouldReuseSeedBackdrop
     val heroBackdropRequest = remember(

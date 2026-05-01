@@ -466,18 +466,19 @@ private fun EpisodeItem(
 ) {
     val shouldBlur = blurUnwatched && !isWatched && !isCurrent
     val context = LocalContext.current
-    val isUnavailable = remember(episode.available, episode.released) {
-        episode.available == false || (episode.released != null && try {
+    val isUnreleased = remember(episode.released) {
+        episode.released != null && try {
             java.time.Instant.parse(episode.released).isAfter(java.time.Instant.now())
         } catch (_: Exception) {
             try {
                 java.time.LocalDate.parse(episode.released.substringBefore('T')).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().isAfter(java.time.Instant.now())
             } catch (_: Exception) { false }
-        })
+        }
     }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
-        episode.thumbnail?.takeIf { it.isNotBlank() && it != "null" }
-            ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
+        val thumb = episode.thumbnail?.trim()
+        val isValidThumb = !thumb.isNullOrBlank() && thumb != "null" && !thumb.endsWith("null") && !thumb.endsWith("/null")
+        if (isValidThumb) thumb else fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
     val episodeTitle = episode.title.localizeEpisodeTitle(context).ifBlank { context.getString(R.string.episodes_episode) }
     val formattedDate = remember(episode.released) {
@@ -593,15 +594,15 @@ private fun EpisodeItem(
 
                 if (formattedDate != null) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalArrangement = Arrangement.spacedBy(1.dp),
+                                verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (isUnavailable) {
+                        if (isUnreleased) {
                             Icon(
                                 imageVector = Icons.Outlined.Schedule,
                                 contentDescription = null,
                                 tint = NuvioTheme.extendedColors.textTertiary,
-                                modifier = Modifier.size(11.4.dp)
+                                modifier = Modifier.size(10.8.dp)
                             )
                         }
                         Text(

@@ -471,18 +471,19 @@ private fun EpisodeCard(
     val description = remember(episode.overview) { episode.overview?.trim().orEmpty() }
     val isWatched = remember(watchProgress, isMarkedWatched) { watchProgress?.isCompleted() == true || isMarkedWatched }
     val shouldBlur = remember(blurUnwatched, isWatched) { blurUnwatched && !isWatched }
-    val isUnavailable = remember(episode.available, episode.released) {
-        episode.available == false || (episode.released != null && try {
+    val isUnreleased = remember(episode.released) {
+        episode.released != null && try {
             java.time.Instant.parse(episode.released).isAfter(java.time.Instant.now())
         } catch (_: Exception) {
             try {
                 java.time.LocalDate.parse(episode.released.substringBefore('T')).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().isAfter(java.time.Instant.now())
             } catch (_: Exception) { false }
-        })
+        }
     }
     val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl) {
-        episode.thumbnail?.takeIf { it.isNotBlank() && it != "null" }
-            ?: fallbackArtworkUrl?.takeIf { it.isNotBlank() }
+        val thumb = episode.thumbnail?.trim()
+        val isValidThumb = !thumb.isNullOrBlank() && thumb != "null" && !thumb.endsWith("null") && !thumb.endsWith("/null")
+        if (isValidThumb) thumb else fallbackArtworkUrl?.takeIf { it.isNotBlank() }
     }
     val progressPercent = remember(watchProgress) { watchProgress?.progressPercentage ?: 0f }
     val showProgress = remember(progressPercent) { progressPercent >= 0.02f && progressPercent < 0.85f }
@@ -683,7 +684,7 @@ private fun EpisodeCard(
                             ),
                             alpha = if (isFocusedState.value) 1f else 0.94f
                         )
-                        if (isUnavailable) {
+                        if (isUnreleased) {
                             drawRect(color = Color.Black.copy(alpha = 0.20f))
                         }
                     },
@@ -788,15 +789,15 @@ private fun EpisodeCard(
                         if (formattedDate.isNotBlank()) {
                             Row(
                                 modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.End),
+                                horizontalArrangement = Arrangement.spacedBy(1.dp, Alignment.End),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (isUnavailable) {
+                                if (isUnreleased) {
                                     Icon(
                                         imageVector = Icons.Outlined.Schedule,
                                         contentDescription = null,
                                         tint = textSecondary,
-                                        modifier = Modifier.size(cardMetrics.metadataIconSize * 0.85f)
+                                        modifier = Modifier.size(cardMetrics.metadataIconSize * 0.75f)
                                     )
                                 }
                                 Text(
@@ -862,7 +863,7 @@ private fun EpisodeCard(
                 }
             }
 
-            if (isUnavailable) {
+            if (isUnreleased) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
