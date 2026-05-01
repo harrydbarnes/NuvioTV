@@ -1587,6 +1587,7 @@ private fun MetaDetailsContent(
                     Box(modifier = Modifier.bringIntoViewResponder(noVerticalScrollResponder)) {
                         EpisodesRow(
                             episodes = episodesForSeason,
+                            fallbackArtworkUrl = seedBackdropUrl ?: backdropDataUrl,
                             episodeProgressMap = episodeProgressMap,
                             episodeRatings = episodeImdbRatings,
                             watchedEpisodes = watchedEpisodes,

@@ -239,6 +239,7 @@ fun SeasonTabs(
 @Composable
 fun EpisodesRow(
     episodes: List<Video>,
+    fallbackArtworkUrl: String? = null,
     episodeProgressMap: Map<Pair<Int, Int>, com.nuvio.tv.domain.model.WatchProgress> = emptyMap(),
     episodeRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     watchedEpisodes: Set<Pair<Int, Int>> = emptySet(),
@@ -365,6 +366,7 @@ fun EpisodesRow(
             }
             EpisodeCard(
                 episode = episode,
+                fallbackArtworkUrl = fallbackArtworkUrl,
                 watchProgress = progress,
                 imdbRating = imdbRating,
                 isMarkedWatched = isMarkedWatched,
@@ -440,6 +442,7 @@ fun EpisodesRow(
 @Composable
 private fun EpisodeCard(
     episode: Video,
+    fallbackArtworkUrl: String? = null,
     watchProgress: com.nuvio.tv.domain.model.WatchProgress? = null,
     imdbRating: Double? = null,
     isMarkedWatched: Boolean = false,
@@ -468,11 +471,18 @@ private fun EpisodeCard(
     val description = remember(episode.overview) { episode.overview?.trim().orEmpty() }
     val isWatched = remember(watchProgress, isMarkedWatched) { watchProgress?.isCompleted() == true || isMarkedWatched }
     val shouldBlur = remember(blurUnwatched, isWatched) { blurUnwatched && !isWatched }
+    val isUnavailable = remember(episode.available) { episode.available == false }
+    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
+        episode.thumbnail?.takeIf { it.isNotBlank() }
+            ?: fallbackArtworkUrl?.takeIf { isUnavailable && it.isNotBlank() }
+    }
+    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl, isUnavailable) {
+        isUnavailable && episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
+    }
     val progressPercent = remember(watchProgress) { watchProgress?.progressPercentage ?: 0f }
     val showProgress = remember(progressPercent) { progressPercent >= 0.02f && progressPercent < 0.85f }
     val showCompletedBadge = isWatched
     val showNotStartedBadge = remember(showCompletedBadge, progressPercent) { !showCompletedBadge && progressPercent < 0.02f }
-    val isUnavailable = remember(episode.available) { episode.available == false }
     val cardBgColor = NuvioColors.BackgroundCard
     val isFocusedState = remember { mutableStateOf(false) }
     val cardCornerRadius = remember(cardMetrics.cornerRadius, density) {
@@ -533,9 +543,9 @@ private fun EpisodeCard(
     val badgeShape = remember(cardMetrics.episodeBadgeCornerRadius) { RoundedCornerShape(cardMetrics.episodeBadgeCornerRadius) }
     val progressBgColor = remember { Color.Black.copy(alpha = 0.45f) }
     val notStartedBadgeColor = remember(textSecondary) { textSecondary.copy(alpha = 0.9f) }
-    val thumbnailRequest = remember(context, episode.thumbnail, thumbnailWidthPx, thumbnailHeightPx, shouldBlur) {
+    val thumbnailRequest = remember(context, imageUrl, thumbnailWidthPx, thumbnailHeightPx, shouldBlur) {
         ImageRequest.Builder(context)
-            .data(episode.thumbnail)
+            .data(imageUrl)
             .crossfade(true)
             .size(width = thumbnailWidthPx, height = thumbnailHeightPx)
             .apply {
@@ -668,6 +678,9 @@ private fun EpisodeCard(
                             ),
                             alpha = if (isFocusedState.value) 1f else 0.94f
                         )
+                        if (isFallbackArtwork) {
+                            drawRect(color = Color.Black.copy(alpha = 0.20f))
+                        }
                     },
                 contentScale = ContentScale.Crop,
                 placeholder = bgPainter,
@@ -769,14 +782,25 @@ private fun EpisodeCard(
                         }
 
                         if (formattedDate.isNotBlank()) {
-                            Text(
-                                text = formattedDate,
-                                style = metaLabelStyle,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Schedule,
+                                    contentDescription = null,
+                                    tint = textSecondary,
+                                    modifier = Modifier.size(cardMetrics.metadataIconSize)
+                                )
+                                Text(
+                                    text = formattedDate,
+                                    style = metaLabelStyle,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.End
+                                )
+                            }
                         }
                     }
                 }

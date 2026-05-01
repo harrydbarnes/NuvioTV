@@ -63,6 +63,7 @@ import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.screens.detail.formatReleaseDate
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.Schedule
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -375,6 +376,7 @@ private fun EpisodesListView(
                         )
                         EpisodeItem(
                             episode = episode,
+                            fallbackArtworkUrl = uiState.backdrop,
                             isCurrent = isCurrent,
                             isWatched = isWatched,
                             blurUnwatched = uiState.blurUnwatchedEpisodes,
@@ -454,6 +456,7 @@ private fun EpisodesSeasonTabs(
 @Composable
 private fun EpisodeItem(
     episode: Video,
+    fallbackArtworkUrl: String?,
     isCurrent: Boolean,
     isWatched: Boolean = false,
     blurUnwatched: Boolean = false,
@@ -463,6 +466,14 @@ private fun EpisodeItem(
 ) {
     val shouldBlur = blurUnwatched && !isWatched && !isCurrent
     val context = LocalContext.current
+    val isUnavailable = episode.available == false
+    val imageUrl = remember(episode.thumbnail, fallbackArtworkUrl, isUnavailable) {
+        episode.thumbnail?.takeIf { it.isNotBlank() }
+            ?: fallbackArtworkUrl?.takeIf { isUnavailable && it.isNotBlank() }
+    }
+    val isFallbackArtwork = remember(episode.thumbnail, imageUrl, fallbackArtworkUrl, isUnavailable) {
+        isUnavailable && episode.thumbnail.isNullOrBlank() && imageUrl == fallbackArtworkUrl
+    }
     val episodeTitle = episode.title.localizeEpisodeTitle(context).ifBlank { context.getString(R.string.episodes_episode) }
     val formattedDate = remember(episode.released) {
         episode.released?.let { formatReleaseDate(it) }?.takeIf { it.isNotBlank() }
@@ -512,7 +523,7 @@ private fun EpisodeItem(
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(episode.thumbnail)
+                        .data(imageUrl)
                         .crossfade(true)
                         .apply {
                             if (shouldBlur) {
@@ -524,6 +535,14 @@ private fun EpisodeItem(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+
+                if (isFallbackArtwork) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.20f))
+                    )
+                }
 
                 if (episodeCode != null) {
                     Box(
@@ -576,11 +595,22 @@ private fun EpisodeItem(
                 )
 
                 if (formattedDate != null) {
-                    Text(
-                        text = formattedDate,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NuvioTheme.extendedColors.textTertiary
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Schedule,
+                            contentDescription = null,
+                            tint = NuvioTheme.extendedColors.textTertiary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = formattedDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = NuvioTheme.extendedColors.textTertiary
+                        )
+                    }
                 }
 
                 episode.overview?.takeIf { it.isNotBlank() }?.let {
