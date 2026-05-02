@@ -587,7 +587,11 @@ private var cachedDateFormat: java.text.SimpleDateFormat? = null
 internal fun extractYearText(type: ContentType, releaseInfo: String?, released: String?, showFullDate: Boolean = true): String? {
     if (showFullDate && type == ContentType.MOVIE) {
         val full = released
-            ?.let { runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull() }
+            ?.let {
+                runCatching { java.time.OffsetDateTime.parse(it).toLocalDate() }.getOrNull()
+                    ?: runCatching { java.time.Instant.parse(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }.getOrNull()
+                    ?: runCatching { java.time.LocalDate.parse(it) }.getOrNull()
+            }
             ?.let {
                 val locale = java.util.Locale.getDefault()
                 val fmt = if (locale == cachedDateFormatLocale && cachedDateFormat != null) {
