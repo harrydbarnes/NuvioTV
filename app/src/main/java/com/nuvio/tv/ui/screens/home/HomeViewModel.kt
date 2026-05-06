@@ -41,6 +41,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -88,7 +89,7 @@ class HomeViewModel @Inject constructor(
         private const val MAX_CATALOG_LOAD_CONCURRENCY = 8
         internal const val EXTERNAL_META_PREFETCH_FOCUS_DEBOUNCE_MS = 220L
         internal const val EXTERNAL_META_PREFETCH_ADJACENT_DEBOUNCE_MS = 120L
-        internal const val MAX_POSTER_STATUS_OBSERVERS = 24
+        internal const val MAX_POSTER_STATUS_OBSERVERS = 8
     }
 
     internal val _uiState = MutableStateFlow(HomeUiState())
@@ -138,6 +139,10 @@ class HomeViewModel @Inject constructor(
 
     internal val _enrichedPreviews = MutableStateFlow<Map<String, MetaPreview>>(emptyMap())
     val enrichedPreviews: StateFlow<Map<String, MetaPreview>> = _enrichedPreviews.asStateFlow()
+
+    /** Items for which enrichment was attempted but produced no enriched data. */
+    internal val _failedEnrichmentIds = MutableStateFlow<Set<String>>(emptySet())
+    val failedEnrichmentIds: StateFlow<Set<String>> = _failedEnrichmentIds.asStateFlow()
 
     internal val catalogStateLock = Any()
     internal val catalogsMap = linkedMapOf<String, CatalogRow>()
@@ -200,6 +205,8 @@ class HomeViewModel @Inject constructor(
     internal val cwEnrichedInProgressOverlay = Collections.synchronizedMap(mutableMapOf<String, ContinueWatchingItem.InProgress>())
     /** Bumped to force the CW pipeline to re-run (e.g. after cache clear). */
     internal val cwPipelineRefreshTrigger = kotlinx.coroutines.flow.MutableStateFlow(0)
+    /** Tracks the active CW pipeline coroutine so it can be cancelled on profile switch. */
+    internal var cwPipelineJob: Job? = null
     internal val fullyWatchedSeriesIds get() = watchedSeriesStateHolder
     internal var tmdbEnrichFocusJob: Job? = null
     internal var pendingTmdbEnrichItemId: String? = null
@@ -268,6 +275,9 @@ class HomeViewModel @Inject constructor(
             profileManager.activeProfileId.collect { newId ->
                 if (newId != previousProfileId) {
                     previousProfileId = newId
+                    // Cancel old pipeline — prevents racing writes from stale coroutines.
+                    cwPipelineJob?.cancel()
+                    cwPipelineJob = null
                     // Clear all in-memory CW caches so data from the previous
                     // profile doesn't leak into the new one.
                     cwMetaCache.clear()
@@ -288,6 +298,8 @@ class HomeViewModel @Inject constructor(
                             layoutPreferencesReady = false
                         )
                     }
+                    // Reset so the new profile's pipeline signals first completion correctly.
+                    _initialCwResolved.value = false
                     loadContinueWatching()
                     // Clear watched badges so they don't leak between profiles.
                     watchedSeriesStateHolder.update(emptySet())
@@ -683,24 +695,49 @@ class HomeViewModel @Inject constructor(
     fun saveFocusState(
         verticalScrollIndex: Int,
         verticalScrollOffset: Int,
-        focusedRowIndex: Int,
-        focusedItemIndex: Int,
-        catalogRowScrollStates: Map<String, Int>
+        focusedRowKey: String?,
+        focusedItemKeyByRow: Map<String, String>,
+        catalogRowScrollStates: Map<String, Int>,
+        focusedRowIndex: Int = 0,
+        focusedItemIndex: Int = 0
     ) {
         if (suppressFocusSave) {
             suppressFocusSave = false
             return
         }
-        val nextState = HomeScreenFocusState(
+        val nextState = _focusState.value.copy(
             verticalScrollIndex = verticalScrollIndex,
             verticalScrollOffset = verticalScrollOffset,
+            focusedRowKey = focusedRowKey,
+            focusedItemKeyByRow = focusedItemKeyByRow,
+            catalogRowScrollStates = catalogRowScrollStates,
             focusedRowIndex = focusedRowIndex,
             focusedItemIndex = focusedItemIndex,
-            catalogRowScrollStates = catalogRowScrollStates,
             hasSavedFocus = true
         )
         if (_focusState.value == nextState) return
         _focusState.value = nextState
+    }
+
+    /**
+     * Updates the stable focus target for a specific row.
+     */
+    fun updateFocusedItemKey(rowKey: String, itemKey: String) {
+        _focusState.update { state ->
+            val nextMap = state.focusedItemKeyByRow.toMutableMap()
+            if (nextMap[rowKey] == itemKey) return@update state
+            nextMap[rowKey] = itemKey
+            state.copy(focusedItemKeyByRow = nextMap)
+        }
+    }
+
+    /**
+     * Updates the currently focused row key.
+     */
+    fun updateFocusedRowKey(rowKey: String?) {
+        _focusState.update { state ->
+            if (state.focusedRowKey == rowKey) state else state.copy(focusedRowKey = rowKey)
+        }
     }
 
     /**

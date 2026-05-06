@@ -1,9 +1,7 @@
 package com.nuvio.tv.ui.screens.home
 
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -16,12 +14,16 @@ import com.nuvio.tv.ui.util.localizeEpisodeTitle
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.R
 import com.nuvio.tv.ui.components.formatContinueWatchingProgressLabel
+import com.nuvio.tv.ui.util.StableList
+import com.nuvio.tv.ui.util.StableMap
+import com.nuvio.tv.ui.util.StableSet
+import com.nuvio.tv.ui.util.asStable
 
 internal val YEAR_REGEX = Regex("""\b(19|20)\d{2}\b""")
 internal const val MODERN_HERO_TEXT_WIDTH_FRACTION = 0.42f
 internal const val MODERN_HERO_MEDIA_WIDTH_FRACTION = 0.72f
 internal const val MODERN_TRAILER_OVERSCAN_ZOOM = 1.35f
-internal const val MODERN_HERO_FOCUS_DEBOUNCE_MS = 90L
+internal const val MODERN_HERO_FOCUS_DEBOUNCE_MS = 450L
 internal val MODERN_ROW_HEADER_FOCUS_INSET = 40.dp
 internal const val MODERN_CONTINUE_WATCHING_ROW_KEY = "continue_watching"
 internal val MODERN_LANDSCAPE_LOGO_GRADIENT = Brush.verticalGradient(
@@ -47,7 +49,7 @@ data class HeroPreview(
     val statusText: String? = null,
     val countryText: String? = null,
     val languageText: String? = null,
-    val genres: List<String>,
+    val genres: StableList<String>,
     val poster: String?,
     val backdrop: String?,
     val imageUrl: String?,
@@ -108,7 +110,7 @@ data class HeroCarouselRow(
     val key: String,
     val title: String,
     val globalRowIndex: Int,
-    val items: List<ModernCarouselItem>,
+    val items: StableList<ModernCarouselItem>,
     val catalogId: String? = null,
     val addonId: String? = null,
     val apiType: String? = null,
@@ -119,28 +121,28 @@ data class HeroCarouselRow(
 
 @Immutable
 data class CarouselRowLookups(
-    val rowIndexByKey: Map<String, Int>,
-    val rowByKey: Map<String, HeroCarouselRow>,
-    val rowKeyByGlobalRowIndex: Map<Int, String>,
-    val firstHeroPreviewByRow: Map<String, HeroPreview>,
-    val fallbackBackdropByRow: Map<String, String>,
-    val activeRowKeys: Set<String>,
-    val activeItemKeysByRow: Map<String, Set<String>>,
-    val activeCatalogItemIds: Set<String>
+    val rowIndexByKey: StableMap<String, Int>,
+    val rowByKey: StableMap<String, HeroCarouselRow>,
+    val rowKeyByGlobalRowIndex: StableMap<Int, String>,
+    val firstHeroPreviewByRow: StableMap<String, HeroPreview>,
+    val fallbackBackdropByRow: StableMap<String, String>,
+    val activeRowKeys: StableSet<String>,
+    val activeItemKeysByRow: StableMap<String, Set<String>>,
+    val activeCatalogItemIds: StableSet<String>
 )
 
 @Immutable
 data class ModernHomePresentationState(
-    val rows: List<HeroCarouselRow> = emptyList(),
+    val rows: StableList<HeroCarouselRow> = StableList(),
     val lookups: CarouselRowLookups = CarouselRowLookups(
-        rowIndexByKey = emptyMap(),
-        rowByKey = emptyMap(),
-        rowKeyByGlobalRowIndex = emptyMap(),
-        firstHeroPreviewByRow = emptyMap(),
-        fallbackBackdropByRow = emptyMap(),
-        activeRowKeys = emptySet(),
-        activeItemKeysByRow = emptyMap(),
-        activeCatalogItemIds = emptySet()
+        rowIndexByKey = StableMap(),
+        rowByKey = StableMap(),
+        rowKeyByGlobalRowIndex = StableMap(),
+        firstHeroPreviewByRow = StableMap(),
+        fallbackBackdropByRow = StableMap(),
+        activeRowKeys = StableSet(),
+        activeItemKeysByRow = StableMap(),
+        activeCatalogItemIds = StableSet()
     )
 )
 
@@ -170,19 +172,6 @@ internal data class ModernCollectionRowBuildCacheEntry(
     val source: Collection,
     val mappedRow: HeroCarouselRow
 )
-@Stable
-internal class ModernHomeUiCaches {
-    val focusedItemByRow = mutableMapOf<String, Int>()
-    val itemFocusRequesters = mutableMapOf<String, MutableMap<String, FocusRequester>>()
-    val rowListStates = mutableMapOf<String, LazyListState>()
-    val loadMoreRequestedTotals = mutableMapOf<String, Int>()
-
-    fun requesterFor(rowKey: String, itemKey: String): FocusRequester {
-        val byIndex = itemFocusRequesters.getOrPut(rowKey) { mutableMapOf() }
-        return byIndex.getOrPut(itemKey) { FocusRequester() }
-    }
-}
-
 @Stable
 class ModernCarouselRowBuildCache {
     var continueWatchingItems: List<ContinueWatchingItem> = emptyList()
@@ -250,6 +239,31 @@ internal fun ModernCarouselItem.catalogCardMetrics(
     }
 }
 
+internal fun ModernCarouselItem.catalogCardRequestMetrics(
+    useLandscapePosters: Boolean,
+    portraitCardWidth: androidx.compose.ui.unit.Dp,
+    portraitCardHeight: androidx.compose.ui.unit.Dp,
+    landscapeCardWidth: androidx.compose.ui.unit.Dp,
+    landscapeCardHeight: androidx.compose.ui.unit.Dp,
+    expandEnabled: Boolean = false
+): ModernCatalogCardMetrics {
+    val base = catalogCardMetrics(
+        useLandscapePosters = useLandscapePosters,
+        portraitCardWidth = portraitCardWidth,
+        portraitCardHeight = portraitCardHeight,
+        landscapeCardWidth = landscapeCardWidth,
+        landscapeCardHeight = landscapeCardHeight
+    )
+    if (!expandEnabled) return base
+
+    val expandedWidth = if (useLandscapePosters && payload !is ModernPayload.CollectionFolder) {
+        base.width
+    } else {
+        base.height * (16f / 9f)
+    }
+    return base.copy(width = maxOf(base.width, expandedWidth))
+}
+
 
 internal fun buildContinueWatchingItem(
     item: ContinueWatchingItem,
@@ -311,7 +325,7 @@ internal fun buildContinueWatchingItem(
                 yearText = extractYearOrRange(item.releaseInfo),
                 secondaryHighlightText = secondaryHighlightText,
                 imdbText = item.episodeImdbRating?.let { String.format("%.1f", it) },
-                genres = item.genres,
+                genres = item.genres.asStable(),
                 poster = item.progress.poster,
                 backdrop = item.progress.backdrop,
                 imageUrl = if (useLandscapePosters) {
@@ -340,7 +354,7 @@ internal fun buildContinueWatchingItem(
                 yearText = extractYearOrRange(item.info.releaseInfo),
                 secondaryHighlightText = secondaryHighlightText,
                 imdbText = item.info.imdbRating?.let { String.format("%.1f", it) },
-                genres = item.info.genres,
+                genres = item.info.genres.asStable(),
                 poster = item.info.poster,
                 backdrop = item.info.backdrop,
                 imageUrl = if (useLandscapePosters) {
@@ -454,7 +468,7 @@ internal fun buildCatalogItem(
         statusText = item.status,
         countryText = item.country,
         languageText = item.language?.uppercase(),
-        genres = item.genres.take(3),
+        genres = item.genres.take(3).asStable(),
         poster = item.poster,
         backdrop = item.backdropUrl,
         imageUrl = if (useLandscapePosters) {
@@ -514,7 +528,7 @@ internal fun buildCollectionFolderItem(
             contentTypeText = null,
             yearText = null,
             imdbText = null,
-            genres = emptyList(),
+            genres = emptyList<String>().asStable(),
             poster = imageUrl,
             backdrop = heroBackdrop,
             imageUrl = imageUrl

@@ -7,7 +7,9 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
 import com.nuvio.tv.domain.model.CatalogRow
 import com.nuvio.tv.domain.model.Collection
+import com.nuvio.tv.ui.util.asStable
 import java.util.Locale
+import kotlinx.coroutines.withContext
 
 @Immutable
 internal data class ModernHomePresentationInput(
@@ -63,7 +65,7 @@ internal fun buildModernHomePresentation(
                             upcomingLabel = strUpcoming,
                             context = localizedContext
                         )
-                    }
+                    }.asStable()
                 )
             }
             cache.continueWatchingItems = input.continueWatchingItems
@@ -122,7 +124,7 @@ internal fun buildModernHomePresentation(
                             supportsSkip = row.supportsSkip,
                             hasMore = row.hasMore,
                             isLoading = row.isLoading,
-                            items = row.items.map { item ->
+                            items = row.items.mapIndexed { itemIndex, item ->
                                 val occurrence = rowItemOccurrenceCounts.getOrDefault(item.id, 0)
                                 rowItemOccurrenceCounts[item.id] = occurrence + 1
                                 val cacheKey = "${item.id}_$occurrence"
@@ -132,7 +134,11 @@ internal fun buildModernHomePresentation(
                                     cachedItem.useLandscapePosters == input.useLandscapePosters &&
                                     cachedItem.showFullReleaseDate == input.showFullReleaseDate
                                 ) {
-                                    cachedItem.carouselItem
+                                    cachedItem.carouselItem.let { cached ->
+                                        val positionalKey = "${rowKey}_$itemIndex"
+                                        if (cached.key == positionalKey) cached
+                                        else cached.copy(key = positionalKey)
+                                    }
                                 } else {
                                     val built = buildCatalogItem(
                                         item = item,
@@ -143,7 +149,7 @@ internal fun buildModernHomePresentation(
                                         strTypeSeries = strTypeSeries,
                                         showFullReleaseDate = input.showFullReleaseDate,
                                         previousCachedItem = cachedItem?.carouselItem
-                                    )
+                                    ).copy(key = "${rowKey}_$itemIndex")
                                     rowItemCache[cacheKey] = CachedCarouselItem(
                                         source = item,
                                         useLandscapePosters = input.useLandscapePosters,
@@ -152,7 +158,7 @@ internal fun buildModernHomePresentation(
                                     )
                                     built
                                 }
-                            }
+                            }.asStable()
                         )
                     }
 
@@ -199,7 +205,7 @@ internal fun buildModernHomePresentation(
                                     folder = folder,
                                     occurrence = occurrence
                                 )
-                            }
+                            }.asStable()
                         )
                     }
 
@@ -219,7 +225,7 @@ internal fun buildModernHomePresentation(
                     val fakeItems = (0 until fakeItemCount).map { i ->
                         val fakeId = "__placeholder_${homeRow.catalogKey}_$i"
                         ModernCarouselItem(
-                            key = "placeholder_${homeRow.catalogKey}_$i",
+                            key = "${homeRow.catalogKey}_$i",
                             title = "",
                             subtitle = null,
                             // Dummy URL triggers shimmer instead of MonochromePosterPlaceholder
@@ -227,7 +233,7 @@ internal fun buildModernHomePresentation(
                             heroPreview = HeroPreview(
                                 title = "", logo = null, description = null,
                                 contentTypeText = null, yearText = null, imdbText = null,
-                                genres = emptyList(), poster = null, backdrop = null,
+                                genres = com.nuvio.tv.ui.util.StableList(emptyList()), poster = null, backdrop = null,
                                 imageUrl = "placeholder://empty"
                             ),
                             payload = ModernPayload.Catalog(
@@ -240,7 +246,7 @@ internal fun buildModernHomePresentation(
                                 trailerApiType = homeRow.apiType
                             )
                         )
-                    }
+                    }.asStable()
                     val placeholderRow = HeroCarouselRow(
                         key = homeRow.catalogKey,
                         title = homeRow.displayTitle,
@@ -263,7 +269,7 @@ internal fun buildModernHomePresentation(
 
     val lookups = buildCarouselRowLookups(rows)
     return ModernHomePresentationState(
-        rows = rows,
+        rows = rows.asStable(),
         lookups = lookups
     )
 }
@@ -326,15 +332,15 @@ internal fun buildCarouselRowLookups(carouselRows: List<HeroCarouselRow>): Carou
         if (row.globalRowIndex >= 0) {
             rowKeyByGlobalRowIndex[row.globalRowIndex] = row.key
         }
-        row.items.firstOrNull()?.heroPreview?.let { firstHeroPreviewByRow[row.key] = it }
-        row.items.firstNotNullOfOrNull { item ->
+        row.items.list.firstOrNull()?.heroPreview?.let { firstHeroPreviewByRow[row.key] = it }
+        row.items.list.firstNotNullOfOrNull { item ->
             item.heroPreview.backdrop?.takeIf { it.isNotBlank() }
         }?.let { fallbackBackdropByRow[row.key] = it }
         activeRowKeys += row.key
 
-        val itemKeys = LinkedHashSet<String>(row.items.size)
-        row.items.forEach { item ->
-            itemKeys += item.key
+        val itemKeys = LinkedHashSet<String>(row.items.list.size)
+        row.items.list.forEach { item ->
+            itemKeys.add(item.key)
             val payload = item.payload
             if (payload is ModernPayload.Catalog) {
                 activeCatalogItemIds += payload.itemId
@@ -344,13 +350,13 @@ internal fun buildCarouselRowLookups(carouselRows: List<HeroCarouselRow>): Carou
     }
 
     return CarouselRowLookups(
-        rowIndexByKey = rowIndexByKey,
-        rowByKey = rowByKey,
-        rowKeyByGlobalRowIndex = rowKeyByGlobalRowIndex,
-        firstHeroPreviewByRow = firstHeroPreviewByRow,
-        fallbackBackdropByRow = fallbackBackdropByRow,
-        activeRowKeys = activeRowKeys,
-        activeItemKeysByRow = activeItemKeysByRow,
-        activeCatalogItemIds = activeCatalogItemIds
+        rowIndexByKey = rowIndexByKey.asStable(),
+        rowByKey = rowByKey.asStable(),
+        rowKeyByGlobalRowIndex = rowKeyByGlobalRowIndex.asStable(),
+        firstHeroPreviewByRow = firstHeroPreviewByRow.asStable(),
+        fallbackBackdropByRow = fallbackBackdropByRow.asStable(),
+        activeRowKeys = activeRowKeys.asStable(),
+        activeItemKeysByRow = activeItemKeysByRow.asStable(),
+        activeCatalogItemIds = activeCatalogItemIds.asStable()
     )
 }

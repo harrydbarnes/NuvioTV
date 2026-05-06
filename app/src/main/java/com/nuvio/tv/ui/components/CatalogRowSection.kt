@@ -103,14 +103,11 @@ fun CatalogRowSection(
     }
 
     val seeAllCardShape = RoundedCornerShape(posterCardStyle.cornerRadius)
-    val currentOnItemFocused by rememberUpdatedState(onItemFocused)
-    val currentOnItemFocus by rememberUpdatedState(onItemFocus)
-
     val internalRowFocusRequester = remember { FocusRequester() }
     val resolvedRowFocusRequester = rowFocusRequester ?: internalRowFocusRequester
     val itemFocusRequestersByKey = remember { mutableMapOf<String, FocusRequester>() }
     var lastRequestedFocusItemKey by remember { mutableStateOf<String?>(null) }
-    var lastFocusedItemIndex by remember { mutableIntStateOf(-1) }
+    val lastFocusedItemIndex = remember { mutableIntStateOf(-1) }
 
     val blockingFocusExit = remember { mutableStateOf(false) }
     val rowHasFocusRef = remember { mutableStateOf(false) }
@@ -139,15 +136,13 @@ fun CatalogRowSection(
         blockingFocusExit.value = false
     }
 
-    // When fresh data prepends new items to a row the user hasn't
-    // scrolled, snap back to position 0 so the newest content is visible.
-    val firstItemKey = catalogRow.items.firstOrNull()?.let { rowItemFocusKey(0, it) }
-    LaunchedEffect(firstItemKey) {
-        if (firstItemKey == null) return@LaunchedEffect
-        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
-            listState.scrollToItem(0)
-        }
-    }
+    val latestOnItemClick by rememberUpdatedState(onItemClick)
+    val latestOnSeeAll by rememberUpdatedState(onSeeAll)
+    val latestOnItemFocus by rememberUpdatedState(onItemFocus)
+    val latestIsItemWatched by rememberUpdatedState(isItemWatched)
+    val latestOnItemLongPress by rememberUpdatedState(onItemLongPress)
+    val latestOnItemFocused by rememberUpdatedState(onItemFocused)
+    val latestOnRequestTrailerPreview by rememberUpdatedState(onRequestTrailerPreview)
 
     LaunchedEffect(catalogRow.items) {
         val validKeys = catalogRow.items.mapIndexedTo(mutableSetOf()) { index, item ->
@@ -266,7 +261,7 @@ fun CatalogRowSection(
                 .focusRestorer(
                     if (enableRowFocusRestorer) {
                         run {
-                            val idx = (if (lastFocusedItemIndex >= 0) lastFocusedItemIndex else restorerFocusedIndex)
+                            val idx = (if (lastFocusedItemIndex.intValue >= 0) lastFocusedItemIndex.intValue else restorerFocusedIndex)
                                 .coerceIn(0, (catalogRow.items.size - 1).coerceAtLeast(0))
                             catalogRow.items.getOrNull(idx)
                                 ?.let { itemFocusRequestersByKey.getOrPut(rowItemFocusKey(idx, it)) { FocusRequester() } }
@@ -287,11 +282,27 @@ fun CatalogRowSection(
                 },
                 contentType = { _, item -> item.apiType } // Group items by apiType for better recycling
             ) { index, item ->
-                val targetIndex = if (lastFocusedItemIndex >= 0) lastFocusedItemIndex else 0
+                val targetIndex = if (lastFocusedItemIndex.intValue >= 0) lastFocusedItemIndex.intValue else 0
                 val isEntryTarget = entryFocusRequester != null && index == targetIndex
                 val cardFocusRequester = itemFocusRequestersByKey.getOrPut(
                     rowItemFocusKey(index, item)
                 ) { FocusRequester() }
+
+                val onItemClickStable = remember(item.id, catalogRow.addonBaseUrl) {
+                    { latestOnItemClick(item.id, item.apiType, catalogRow.addonBaseUrl) }
+                }
+                val onItemLongPressStable = remember(item.id, catalogRow.addonBaseUrl) {
+                    { latestOnItemLongPress(item, catalogRow.addonBaseUrl) }
+                }
+                val onFocusStable = remember(index) {
+                    { focusedItem: MetaPreview ->
+                        latestOnItemFocus(focusedItem)
+                        if (lastFocusedItemIndex.intValue != index) {
+                            lastFocusedItemIndex.intValue = index
+                            latestOnItemFocused(index)
+                        }
+                    }
+                }
 
                 ContentCard(
                     item = item,
@@ -304,18 +315,12 @@ fun CatalogRowSection(
                     focusedPosterBackdropTrailerMuted = focusedPosterBackdropTrailerMuted,
                     trailerPreviewUrl = trailerPreviewUrls[item.id],
                     trailerPreviewAudioUrl = trailerPreviewAudioUrls[item.id],
-                    onRequestTrailerPreview = onRequestTrailerPreview,
-                    isWatched = isItemWatched(item),
-                    onFocus = { focusedItem ->
-                        currentOnItemFocus(focusedItem)
-                        if (lastFocusedItemIndex != index) {
-                            lastFocusedItemIndex = index
-                            currentOnItemFocused(index)
-                        }
-                    },
+                    onRequestTrailerPreview = latestOnRequestTrailerPreview,
+                    isWatched = latestIsItemWatched(item),
+                    onFocus = onFocusStable,
                     onBackdropExpandedChanged = null,
-                    onClick = { onItemClick(item.id, item.apiType, catalogRow.addonBaseUrl) },
-                    onLongPress = { onItemLongPress(item, catalogRow.addonBaseUrl) },
+                    onClick = onItemClickStable,
+                    onLongPress = onItemLongPressStable,
                     modifier = Modifier
                         .then(directionalFocusModifier)
                         .then(

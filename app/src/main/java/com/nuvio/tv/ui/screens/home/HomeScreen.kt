@@ -96,7 +96,7 @@ fun HomeScreen(
     val hasHeroContent = uiState.heroItems.isNotEmpty()
     val modernPresentationReady =
         uiState.homeLayout != HomeLayout.MODERN ||
-            uiState.modernHomePresentation.rows.isNotEmpty() ||
+            uiState.modernHomePresentation.rows.list.isNotEmpty() ||
             (uiState.heroSectionEnabled && hasHeroContent && !hasCatalogContent && !hasCollectionContent)
     var showHomeContentWithAnimation by rememberSaveable { mutableStateOf(false) }
     var hasShownInitialHomeContent by rememberSaveable { mutableStateOf(false) }
@@ -119,13 +119,23 @@ fun HomeScreen(
 
     // Stable lambdas — captured via rememberUpdatedState so they never cause
     // downstream recomposition when uiState changes.
-    val latestMovieWatchedStatus by rememberUpdatedState(uiState.movieWatchedStatus)
-    val latestPosterOptionsTarget by rememberUpdatedState(posterOptionsTarget)
-    val isCatalogItemWatched: (MetaPreview) -> Boolean = remember(Unit) {
-        { item -> latestMovieWatchedStatus[homeItemStatusKey(item.id, item.apiType)] == true }
+    val isCatalogItemWatched: (MetaPreview) -> Boolean = remember(viewModel) {
+        { item -> viewModel.uiState.value.movieWatchedStatus[homeItemStatusKey(item.id, item.apiType)] == true }
     }
-    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember(Unit) {
+    val onCatalogItemLongPress: (MetaPreview, String) -> Unit = remember {
         { item, addonBaseUrl -> posterOptionsTarget = HomePosterOptionsTarget(item, addonBaseUrl) }
+    }
+
+    val onNavigateToDetailStable = remember(onNavigateToDetail) { onNavigateToDetail }
+    val onContinueWatchingClickStable = remember(onContinueWatchingClick) { onContinueWatchingClick }
+    val onContinueWatchingStartFromBeginningStable = remember(onContinueWatchingStartFromBeginning) { onContinueWatchingStartFromBeginning }
+    val onContinueWatchingPlayManuallyStable = remember(onContinueWatchingPlayManually) { onContinueWatchingPlayManually }
+    val onNavigateToCatalogSeeAllStable = remember(onNavigateToCatalogSeeAll) { onNavigateToCatalogSeeAll }
+    val onNavigateToFolderDetailStable = remember(onNavigateToFolderDetail) { onNavigateToFolderDetail }
+    val onRemoveContinueWatchingStable = remember(viewModel) {
+        { contentId: String, season: Int?, episode: Int?, isNextUp: Boolean ->
+            viewModel.onEvent(HomeEvent.OnRemoveContinueWatching(contentId, season, episode, isNextUp))
+        }
     }
 
     LaunchedEffect(
@@ -181,6 +191,9 @@ fun HomeScreen(
         )
     }
 
+    val noAddonsError = stringResource(R.string.home_error_no_addons)
+    val noCatalogAddonsError = stringResource(R.string.home_error_no_catalog_addons)
+
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -208,7 +221,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error == "No addons installed" && uiState.catalogRows.isEmpty() -> {
+            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
                 if (!homeStableGateReleased) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingIndicator()
@@ -227,7 +240,7 @@ fun HomeScreen(
                 }
             }
 
-            uiState.error == "No catalog addons installed" && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
+            uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
                 if (!homeStableGateReleased) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingIndicator()
@@ -334,13 +347,13 @@ fun HomeScreen(
                                 viewModel = viewModel,
                                 uiState = uiState,
                                 posterCardStyle = posterCardStyle,
-                                onNavigateToDetail = onNavigateToDetail,
-                                onContinueWatchingClick = onContinueWatchingClick,
-                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning,
-                                onContinueWatchingPlayManually = onContinueWatchingPlayManually,
+                                onNavigateToDetail = onNavigateToDetailStable,
+                                onContinueWatchingClick = onContinueWatchingClickStable,
+                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginningStable,
+                                onContinueWatchingPlayManually = onContinueWatchingPlayManuallyStable,
                                 showContinueWatchingManualPlayOption = effectiveAutoplayEnabled,
-                                onNavigateToCatalogSeeAll = onNavigateToCatalogSeeAll,
-                                onNavigateToFolderDetail = onNavigateToFolderDetail,
+                                onNavigateToCatalogSeeAll = onNavigateToCatalogSeeAllStable,
+                                onNavigateToFolderDetail = onNavigateToFolderDetailStable,
                                 isCatalogItemWatched = isCatalogItemWatched,
                                 onCatalogItemLongPress = onCatalogItemLongPress
                             )
@@ -349,13 +362,13 @@ fun HomeScreen(
                                 viewModel = viewModel,
                                 uiState = uiState,
                                 posterCardStyle = posterCardStyle,
-                                onNavigateToDetail = onNavigateToDetail,
-                                onContinueWatchingClick = onContinueWatchingClick,
-                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning,
-                                onContinueWatchingPlayManually = onContinueWatchingPlayManually,
+                                onNavigateToDetail = onNavigateToDetailStable,
+                                onContinueWatchingClick = onContinueWatchingClickStable,
+                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginningStable,
+                                onContinueWatchingPlayManually = onContinueWatchingPlayManuallyStable,
                                 showContinueWatchingManualPlayOption = effectiveAutoplayEnabled,
-                                onNavigateToCatalogSeeAll = onNavigateToCatalogSeeAll,
-                                onNavigateToFolderDetail = onNavigateToFolderDetail,
+                                onNavigateToCatalogSeeAll = onNavigateToCatalogSeeAllStable,
+                                onNavigateToFolderDetail = onNavigateToFolderDetailStable,
                                 isCatalogItemWatched = isCatalogItemWatched,
                                 onCatalogItemLongPress = onCatalogItemLongPress
                             )
@@ -363,12 +376,12 @@ fun HomeScreen(
                             HomeLayout.MODERN -> ModernHomeRoute(
                                 viewModel = viewModel,
                                 uiState = uiState,
-                                onNavigateToDetail = onNavigateToDetail,
-                                onContinueWatchingClick = onContinueWatchingClick,
-                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginning,
-                                onContinueWatchingPlayManually = onContinueWatchingPlayManually,
+                                onNavigateToDetail = onNavigateToDetailStable,
+                                onContinueWatchingClick = onContinueWatchingClickStable,
+                                onContinueWatchingStartFromBeginning = onContinueWatchingStartFromBeginningStable,
+                                onContinueWatchingPlayManually = onContinueWatchingPlayManuallyStable,
                                 showContinueWatchingManualPlayOption = effectiveAutoplayEnabled,
-                                onNavigateToFolderDetail = onNavigateToFolderDetail,
+                                onNavigateToFolderDetail = onNavigateToFolderDetailStable,
                                 isCatalogItemWatched = isCatalogItemWatched,
                                 onCatalogItemLongPress = onCatalogItemLongPress
                             )
@@ -491,8 +504,8 @@ private fun ClassicHomeRoute(
         onItemFocus = { item ->
             viewModel.onItemFocus(item)
         },
-        onSaveFocusState = { vi, vo, ri, ii, m ->
-            viewModel.saveFocusState(vi, vo, ri, ii, m)
+        onSaveFocusState = { vi, vo, rk, ikm, m, ri, ii ->
+            viewModel.saveFocusState(vi, vo, rk, ikm, m, ri, ii)
         },
         onRequestLazyCatalogLoad = remember(viewModel) {
             { catalogKey: String -> viewModel.requestLazyCatalogLoad(catalogKey) }
@@ -529,16 +542,22 @@ private fun GridHomeRoute(
         showContinueWatchingManualPlayOption = showContinueWatchingManualPlayOption,
         onNavigateToCatalogSeeAll = onNavigateToCatalogSeeAll,
         onNavigateToFolderDetail = onNavigateToFolderDetail,
-        onRemoveContinueWatching = { contentId, season, episode, isNextUp ->
-            viewModel.onEvent(HomeEvent.OnRemoveContinueWatching(contentId, season, episode, isNextUp))
+        onRemoveContinueWatching = remember(viewModel) {
+            { contentId, season, episode, isNextUp ->
+                viewModel.onEvent(HomeEvent.OnRemoveContinueWatching(contentId, season, episode, isNextUp))
+            }
         },
         isCatalogItemWatched = isCatalogItemWatched,
         onCatalogItemLongPress = onCatalogItemLongPress,
-        onItemFocus = { item ->
-            viewModel.onItemFocus(item)
+        onItemFocus = remember(viewModel) {
+            { item ->
+                viewModel.onItemFocus(item)
+            }
         },
-        onSaveGridFocusState = { vi, vo, key ->
-            viewModel.saveGridFocusState(vi, vo, focusedItemKey = key)
+        onSaveGridFocusState = remember(viewModel) {
+            { vi, vo, key ->
+                viewModel.saveGridFocusState(vi, vo, focusedItemKey = key)
+            }
         }
     )
 }
@@ -561,6 +580,7 @@ private fun ModernHomeRoute(
     val enrichingItemId by viewModel.enrichingItemId.collectAsStateWithLifecycle()
     val lastEnrichedPreview by viewModel.lastEnrichedPreview.collectAsStateWithLifecycle()
     val enrichedPreviews by viewModel.enrichedPreviews.collectAsStateWithLifecycle()
+    val failedEnrichmentIds by viewModel.failedEnrichmentIds.collectAsStateWithLifecycle()
     val requestTrailerPreview = remember(viewModel) {
         { itemId: String, title: String, releaseInfo: String?, apiType: String ->
             viewModel.requestTrailerPreview(itemId, title, releaseInfo, apiType)
@@ -577,8 +597,8 @@ private fun ModernHomeRoute(
         }
     }
     val saveModernFocusState = remember(viewModel) {
-        { vi: Int, vo: Int, ri: Int, ii: Int, m: Map<String, Int> ->
-            viewModel.saveFocusState(vi, vo, ri, ii, m)
+        { vi: Int, vo: Int, rk: String?, ikm: Map<String, String>, m: Map<String, Int>, ri: Int, ii: Int ->
+            viewModel.saveFocusState(vi, vo, rk, ikm, m, ri, ii)
         }
     }
     val preloadAdjacentItem = remember(viewModel) {
@@ -593,6 +613,7 @@ private fun ModernHomeRoute(
         enrichingItemId = enrichingItemId,
         lastEnrichedPreview = lastEnrichedPreview,
         enrichedPreviews = enrichedPreviews,
+        failedEnrichmentIds = failedEnrichmentIds,
         trailerPreviewUrls = viewModel.trailerPreviewUrls,
         trailerPreviewAudioUrls = viewModel.trailerPreviewAudioUrls,
         onNavigateToDetail = onNavigateToDetail,
