@@ -84,7 +84,8 @@ sealed class ModernPayload {
         val focusGifUrl: String?,
         val heroBackdropUrl: String?,
         val heroVideoUrl: String?,
-        val titleLogoUrl: String?
+        val titleLogoUrl: String?,
+        val coverEmoji: String? = null
     ) : ModernPayload()
 }
 
@@ -513,7 +514,14 @@ internal fun buildCollectionFolderItem(
     } else {
         folder.title
     }
-    val imageUrl = firstNonBlank(folder.coverImageUrl, collection.backdropImageUrl)
+    // Cover image takes priority over emoji. Emoji is only used as fallback
+    // when no cover image is available.
+    // When focusGifEnabled is off, the GIF URL acts as a regular poster (priority over cover image).
+    val imageUrl = if (!folder.focusGifEnabled) {
+        firstNonBlank(folder.focusGifUrl, folder.coverImageUrl, collection.backdropImageUrl)
+    } else {
+        firstNonBlank(folder.coverImageUrl, collection.backdropImageUrl)
+    }
     val heroBackdrop = firstNonBlank(folder.heroBackdropUrl, folder.coverImageUrl, collection.backdropImageUrl)
 
     return ModernCarouselItem(
@@ -544,7 +552,8 @@ internal fun buildCollectionFolderItem(
             focusGifUrl = folder.focusGifUrl,
             heroBackdropUrl = folder.heroBackdropUrl,
             heroVideoUrl = folder.heroVideoUrl,
-            titleLogoUrl = folder.titleLogoUrl
+            titleLogoUrl = folder.titleLogoUrl,
+            coverEmoji = folder.coverEmoji
         )
     )
 }

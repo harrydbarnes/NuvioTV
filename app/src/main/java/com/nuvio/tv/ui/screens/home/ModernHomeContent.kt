@@ -270,7 +270,8 @@ fun ModernHomeContent(
         if (verticalRowListState.isScrollInProgress) return@LaunchedEffect
         val selection = focusedCatalogSelection.value ?: return@LaunchedEffect
         if (selection.payload !is ModernPayload.Catalog) return@LaunchedEffect
-        delay(uiState.focusedPosterBackdropExpandDelaySeconds.coerceAtLeast(0) * 1000L)
+        val expansionDelayMs = (uiState.focusedPosterBackdropExpandDelaySeconds.coerceAtLeast(0) * 1000L).coerceAtLeast(150L)
+        delay(expansionDelayMs)
         if (!lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
         if (shouldActivateFocusedPosterFlow &&
             !verticalRowListState.isScrollInProgress &&
@@ -675,11 +676,13 @@ fun ModernHomeContent(
                 trailerPlaybackTarget,
                 heroTrailerUrlsState,
                 verticalRowListState,
-                isSidebarExpanded
+                isSidebarExpanded,
+                isRapidHorizontalNav
             ) {
                 derivedStateOf {
                     effectiveAutoplayEnabled &&
                         !isSidebarExpanded.value &&
+                        !isRapidHorizontalNav.value &&
                         !verticalRowListState.isScrollInProgress &&
                         trailerPlaybackTarget == FocusedPosterTrailerPlaybackTarget.HERO_MEDIA &&
                         !heroTrailerUrlsState.value.first.isNullOrBlank()
@@ -768,7 +771,21 @@ fun ModernHomeContent(
                     }
                 }.collect { currentStable ->
                     if (stableHeroSceneStateRef.value != currentStable) {
-                        stableHeroSceneStateRef.value = currentStable
+                        // Don't update stable ref with a fallback backdrop (from heroItem)
+                        // when the active carousel item hasn't resolved yet for the new row.
+                        val currentItem = activeCarouselItemState.value
+                        if (currentItem == null && stableHeroSceneStateRef.value != null) {
+                            return@collect
+                        }
+                        val displayedBackdrop = HeroBackdropState.lastDisplayedUrl
+                        val corrected = if (!displayedBackdrop.isNullOrBlank() &&
+                            displayedBackdrop != currentStable.heroBackdrop
+                        ) {
+                            currentStable.copy(heroBackdrop = displayedBackdrop)
+                        } else {
+                            currentStable
+                        }
+                        stableHeroSceneStateRef.value = corrected
                     }
                 }
             }
@@ -838,7 +855,12 @@ fun ModernHomeContent(
                         // is not at the target inset.
                         val currentLeadingEdge = offset
                         if (abs(currentLeadingEdge - topInsetPx) < 1f) return 0f
-                        return currentLeadingEdge - topInsetPx
+                        val distance = currentLeadingEdge - topInsetPx
+                        // When the list can't scroll backwards and the requested distance
+                        // is negative, clamp to 0 to avoid fighting the scroll bounds
+                        // (prevents first-row jank from impossible scroll-up attempts).
+                        if (distance < 0f && !verticalRowListState.canScrollBackward) return 0f
+                        return distance
                     }
                 }
             }

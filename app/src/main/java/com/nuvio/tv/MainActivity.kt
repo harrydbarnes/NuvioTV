@@ -250,6 +250,10 @@ class MainActivity : ComponentActivity() {
             com.nuvio.tv.core.player.DisplayCapabilities.logSummary(snapshot)
         }
 
+        // Extract extras set by the Continue Watching launcher channel preview programs.
+        val launchContentId = intent?.getStringExtra("contentId")
+        val launchContentType = intent?.getStringExtra("contentType")
+
         setContent {
             var hasSelectedProfileThisSession by rememberSaveable { mutableStateOf(false) }
             var onboardingCompletedThisSession by remember { mutableStateOf(false) }
@@ -307,7 +311,8 @@ class MainActivity : ComponentActivity() {
             }
 
             val activeProfileAvatarImageUrl = remember(activeProfile, avatarCatalog) {
-                activeProfile?.avatarId?.let { avatarRepository.getAvatarImageUrl(it, avatarCatalog) }
+                activeProfile?.avatarUrl?.takeIf { it.isNotBlank() }
+                    ?: activeProfile?.avatarId?.let { avatarRepository.getAvatarImageUrl(it, avatarCatalog) }
             }
 
             val mainUiPrefsFlow = remember(themeDataStore, layoutPreferenceDataStore, experienceModeDataStore) {
@@ -490,6 +495,18 @@ class MainActivity : ComponentActivity() {
                         optimisticRoute = null
                     }
 
+                    // Navigate to content when launched from the Continue Watching channel row.
+                    LaunchedEffect(navController) {
+                        if (launchContentId != null && launchContentType != null && layoutChosen) {
+                            navController.navigate(
+                                Screen.Detail.createRoute(
+                                    itemId = launchContentId,
+                                    itemType = launchContentType
+                                )
+                            )
+                        }
+                    }
+
                     val view = LocalView.current
                     LaunchedEffect(currentRoute) {
                         val holder = PerformanceMetricsState.getHolderForHierarchy(view)
@@ -599,7 +616,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (AppFeaturePolicy.inAppUpdatesEnabled) {
+                    if (AppFeaturePolicy.inAppUpdatesEnabled && !BuildConfig.IS_DEBUG_BUILD) {
                         val updateViewModel: UpdateViewModel = hiltViewModel(this@MainActivity)
                         val updateState by updateViewModel.uiState.collectAsState()
                         UpdatePromptDialog(

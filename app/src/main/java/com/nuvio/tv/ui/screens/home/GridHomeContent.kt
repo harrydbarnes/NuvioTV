@@ -4,6 +4,8 @@ import androidx.compose.runtime.State
 import androidx.compose.foundation.lazy.grid.items
 import com.nuvio.tv.LocalContentFocusRequester
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
@@ -40,6 +42,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import com.nuvio.tv.ui.util.asStable
 import com.nuvio.tv.ui.util.dpadRepeatThrottle
 import androidx.compose.ui.res.stringResource
@@ -134,7 +137,7 @@ fun GridHomeContent(
         }
     }
 
-    // Offset for section indices when continue watching is present
+    // Offset for section indices: pre-items + continue watching item (if present)
     val gridItems = uiState.gridItems
     val continueWatchingItems = uiState.continueWatchingItems
     val continueWatchingOffset = if (continueWatchingItems.isNotEmpty()) 1 else 0
@@ -230,6 +233,23 @@ fun GridHomeContent(
         }
     }
 
+    // Compute the split point: items before the first section divider/collection header
+    // are "pre-section" items (e.g. Hero). Continue Watching goes between them and the rest.
+    val firstSectionIndex = remember(gridItemsWithKeys) {
+        gridItemsWithKeys.indexOfFirst { (item, _) ->
+            item is GridItem.SectionDivider || item is GridItem.CollectionHeader
+        }
+    }
+    val preItems = remember(gridItemsWithKeys, firstSectionIndex) {
+        if (firstSectionIndex > 0) gridItemsWithKeys.subList(0, firstSectionIndex)
+        else if (firstSectionIndex == 0) emptyList()
+        else gridItemsWithKeys // no section divider found — all items are "pre"
+    }
+    val postItems = remember(gridItemsWithKeys, firstSectionIndex) {
+        if (firstSectionIndex >= 0) gridItemsWithKeys.subList(firstSectionIndex, gridItemsWithKeys.size)
+        else emptyList()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         val contentFocusRequester = LocalContentFocusRequester.current
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -251,30 +271,128 @@ fun GridHomeContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            var continueWatchingInserted = false
             var firstGridFocusableAssigned = false
 
-            items(
-                items = gridItemsWithKeys,
-                key = { it.second },
-                span = { pair ->
-                    val spanCount = when (pair.first) {
-                        is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
-                        else -> 1
+            // Emit pre-section items (Hero)
+            if (preItems.isNotEmpty()) {
+                items(
+                    items = preItems,
+                    key = { it.second },
+                    span = { pair ->
+                        val spanCount = when (pair.first) {
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            else -> 1
+                        }
+                        GridItemSpan(spanCount)
+                    },
+                    contentType = { pair ->
+                        when (pair.first) {
+                            is GridItem.Hero -> "hero"
+                            is GridItem.SectionDivider -> "divider"
+                            is GridItem.Content -> "content"
+                            is GridItem.SeeAll -> "see_all"
+                            is GridItem.CollectionHeader -> "collection_header"
+                            is GridItem.CollectionFolder -> "collection_folder"
+                        }
                     }
-                    GridItemSpan(spanCount)
-                },
-                contentType = { pair ->
-                    when (pair.first) {
-                        is GridItem.Hero -> "hero"
-                        is GridItem.SectionDivider -> "divider"
-                        is GridItem.Content -> "content"
-                        is GridItem.SeeAll -> "see_all"
-                        is GridItem.CollectionHeader -> "collection_header"
-                        is GridItem.CollectionFolder -> "collection_folder"
+                ) { (gridItem, itemKey) ->
+                    when (gridItem) {
+                        is GridItem.Hero -> {
+                            HeroCarousel(
+                                items = gridItem.items.asStable(),
+                                focusRequester = if (shouldRequestInitialFocus) heroFocusRequester else null,
+                                onItemClick = remember(onNavigateToDetail) {
+                                    { item ->
+                                        onNavigateToDetail(
+                                            item.id,
+                                            item.apiType,
+                                            ""
+                                        )
+                                    }
+                                },
+                                fullWidth = gridWidth,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        else -> { /* pre-section should only contain Hero */ }
                     }
                 }
-            ) { (gridItem, itemKey) ->
+            }
+
+            // Emit Continue Watching as a dedicated item
+            if (continueWatchingItems.isNotEmpty()) {
+                item(
+                    key = "continue_watching",
+                    span = { GridItemSpan(maxLineSpan) },
+                    contentType = "continue_watching"
+                ) {
+                    GridContinueWatchingSection(
+                        modifier = Modifier.fillMaxWidth(),
+                        fullWidth = gridWidth,
+                        items = continueWatchingItems,
+                        focusedItemIndex = if (shouldRequestInitialFocus && !hasHero) 0 else -1,
+                        onItemClick = onContinueWatchingClick,
+                        onStartFromBeginning = onContinueWatchingStartFromBeginning,
+                        showManualPlayOption = showContinueWatchingManualPlayOption,
+                        onPlayManually = onContinueWatchingPlayManually,
+                        onDetailsClick = { item ->
+                            onNavigateToDetail(
+                                when (item) {
+                                    is ContinueWatchingItem.InProgress -> item.progress.contentId
+                                    is ContinueWatchingItem.NextUp -> item.info.contentId
+                                },
+                                when (item) {
+                                    is ContinueWatchingItem.InProgress -> item.progress.contentType
+                                    is ContinueWatchingItem.NextUp -> item.info.contentType
+                                },
+                                ""
+                            )
+                        },
+                        onRemoveItem = { item ->
+                            val contentId = when (item) {
+                                is ContinueWatchingItem.InProgress -> item.progress.contentId
+                                is ContinueWatchingItem.NextUp -> item.info.contentId
+                            }
+                            val season = when (item) {
+                                is ContinueWatchingItem.InProgress -> item.progress.season
+                                is ContinueWatchingItem.NextUp -> item.info.seedSeason
+                            }
+                            val episode = when (item) {
+                                is ContinueWatchingItem.InProgress -> item.progress.episode
+                                is ContinueWatchingItem.NextUp -> item.info.seedEpisode
+                            }
+                            val isNextUp = item is ContinueWatchingItem.NextUp
+                            onRemoveContinueWatching(contentId, season, episode, isNextUp)
+                        },
+                        blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
+                        useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw
+                    )
+                }
+            }
+
+            // Emit post-section items (SectionDividers, Content, SeeAll, Collections)
+            if (postItems.isNotEmpty()) {
+                items(
+                    items = postItems,
+                    key = { it.second },
+                    span = { pair ->
+                        val spanCount = when (pair.first) {
+                            is GridItem.Hero, is GridItem.SectionDivider, is GridItem.CollectionHeader -> maxLineSpan
+                            else -> 1
+                        }
+                        GridItemSpan(spanCount)
+                    },
+                    contentType = { pair ->
+                        when (pair.first) {
+                            is GridItem.Hero -> "hero"
+                            is GridItem.SectionDivider -> "divider"
+                            is GridItem.Content -> "content"
+                            is GridItem.SeeAll -> "see_all"
+                            is GridItem.CollectionHeader -> "collection_header"
+                            is GridItem.CollectionFolder -> "collection_folder"
+                        }
+                    }
+                ) { (gridItem, itemKey) ->
                 when (gridItem) {
                     is GridItem.Hero -> {
                         HeroCarousel(
@@ -295,52 +413,6 @@ fun GridHomeContent(
                     }
 
                     is GridItem.SectionDivider -> {
-                        // Insert continue watching before the first section divider
-                        if (!continueWatchingInserted && continueWatchingItems.isNotEmpty()) {
-                            continueWatchingInserted = true
-                            GridContinueWatchingSection(
-                                modifier = Modifier.fillMaxWidth(),
-                                fullWidth = gridWidth,
-                                items = continueWatchingItems,
-                                focusedItemIndex = if (shouldRequestInitialFocus && !hasHero) 0 else -1,
-                                onItemClick = onContinueWatchingClick,
-                                onStartFromBeginning = onContinueWatchingStartFromBeginning,
-                                showManualPlayOption = showContinueWatchingManualPlayOption,
-                                onPlayManually = onContinueWatchingPlayManually,
-                                onDetailsClick = { item ->
-                                    onNavigateToDetail(
-                                        when (item) {
-                                            is ContinueWatchingItem.InProgress -> item.progress.contentId
-                                            is ContinueWatchingItem.NextUp -> item.info.contentId
-                                        },
-                                        when (item) {
-                                            is ContinueWatchingItem.InProgress -> item.progress.contentType
-                                            is ContinueWatchingItem.NextUp -> item.info.contentType
-                                        },
-                                        ""
-                                    )
-                                },
-                                onRemoveItem = { item ->
-                                    val contentId = when (item) {
-                                        is ContinueWatchingItem.InProgress -> item.progress.contentId
-                                        is ContinueWatchingItem.NextUp -> item.info.contentId
-                                    }
-                                    val season = when (item) {
-                                        is ContinueWatchingItem.InProgress -> item.progress.season
-                                        is ContinueWatchingItem.NextUp -> item.info.seedSeason
-                                    }
-                                    val episode = when (item) {
-                                        is ContinueWatchingItem.InProgress -> item.progress.episode
-                                        is ContinueWatchingItem.NextUp -> item.info.seedEpisode
-                                    }
-                                    val isNextUp = item is ContinueWatchingItem.NextUp
-                                    onRemoveContinueWatching(contentId, season, episode, isNextUp)
-                                },
-                                blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
-                                useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw
-                            )
-                        }
-
                         val strTypeMovie = stringResource(R.string.type_movie)
                         val strTypeSeries = stringResource(R.string.type_series)
                         val typeLabel = when (gridItem.type.lowercase()) {
@@ -426,36 +498,6 @@ fun GridHomeContent(
                     }
 
                     is GridItem.CollectionHeader -> {
-                        if (!continueWatchingInserted && continueWatchingItems.isNotEmpty()) {
-                            continueWatchingInserted = true
-                            GridContinueWatchingSection(
-                                modifier = Modifier.fillMaxWidth(),
-                                fullWidth = gridWidth,
-                                items = continueWatchingItems,
-                                focusedItemIndex = if (shouldRequestInitialFocus && !hasHero) 0 else -1,
-                                onItemClick = { onContinueWatchingClick(it) },
-                                onStartFromBeginning = onContinueWatchingStartFromBeginning,
-                                showManualPlayOption = showContinueWatchingManualPlayOption,
-                                onPlayManually = onContinueWatchingPlayManually,
-                                onDetailsClick = { item ->
-                                    onNavigateToDetail(
-                                        when (item) { is ContinueWatchingItem.InProgress -> item.progress.contentId; is ContinueWatchingItem.NextUp -> item.info.contentId },
-                                        when (item) { is ContinueWatchingItem.InProgress -> item.progress.contentType; is ContinueWatchingItem.NextUp -> item.info.contentType },
-                                        ""
-                                    )
-                                },
-                                onRemoveItem = { item ->
-                                    onRemoveContinueWatching(
-                                        when (item) { is ContinueWatchingItem.InProgress -> item.progress.contentId; is ContinueWatchingItem.NextUp -> item.info.contentId },
-                                        when (item) { is ContinueWatchingItem.InProgress -> item.progress.season; is ContinueWatchingItem.NextUp -> item.info.seedSeason },
-                                        when (item) { is ContinueWatchingItem.InProgress -> item.progress.episode; is ContinueWatchingItem.NextUp -> item.info.seedEpisode },
-                                        item is ContinueWatchingItem.NextUp
-                                    )
-                                },
-                                blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
-                                useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw
-                            )
-                        }
                         SectionDivider(catalogName = gridItem.title)
                     }
 
@@ -476,55 +518,6 @@ fun GridHomeContent(
                     }
                 }
             }
-
-            if (!continueWatchingInserted && continueWatchingItems.isNotEmpty()) {
-                item(
-                    key = "continue_watching_fallback",
-                    span = { GridItemSpan(maxLineSpan) },
-                    contentType = "continue_watching"
-                ) {
-                    GridContinueWatchingSection(
-                        modifier = Modifier.fillMaxWidth(),
-                        fullWidth = gridWidth,
-                        items = continueWatchingItems,
-                        focusedItemIndex = if (shouldRequestInitialFocus && !hasHero) 0 else -1,
-                        onItemClick = onContinueWatchingClick,
-                        onStartFromBeginning = onContinueWatchingStartFromBeginning,
-                        showManualPlayOption = showContinueWatchingManualPlayOption,
-                        onPlayManually = onContinueWatchingPlayManually,
-                        onDetailsClick = { item ->
-                            onNavigateToDetail(
-                                when (item) {
-                                    is ContinueWatchingItem.InProgress -> item.progress.contentId
-                                    is ContinueWatchingItem.NextUp -> item.info.contentId
-                                },
-                                when (item) {
-                                    is ContinueWatchingItem.InProgress -> item.progress.contentType
-                                    is ContinueWatchingItem.NextUp -> item.info.contentType
-                                },
-                                ""
-                            )
-                        },
-                        onRemoveItem = { item ->
-                            val contentId = when (item) {
-                                is ContinueWatchingItem.InProgress -> item.progress.contentId
-                                is ContinueWatchingItem.NextUp -> item.info.contentId
-                            }
-                            val season = when (item) {
-                                is ContinueWatchingItem.InProgress -> item.progress.season
-                                is ContinueWatchingItem.NextUp -> item.info.seedSeason
-                            }
-                            val episode = when (item) {
-                                is ContinueWatchingItem.InProgress -> item.progress.episode
-                                is ContinueWatchingItem.NextUp -> item.info.seedEpisode
-                            }
-                            val isNextUp = item is ContinueWatchingItem.NextUp
-                            onRemoveContinueWatching(contentId, season, episode, isNextUp)
-                        },
-                        blurUnwatchedEpisodes = uiState.blurUnwatchedEpisodes,
-                        useEpisodeThumbnails = uiState.useEpisodeThumbnailsInCw
-                    )
-                }
             }
 
         } // end LazyVerticalGrid
@@ -738,6 +731,27 @@ private fun GridCollectionFolderCard(
                         color = NuvioColors.TextSecondary
                     )
                 }
+            }
+
+            // GIF overlay: show on top of cover image or emoji, visible only once loaded
+            val focusGifUrl = if (isFocused && folder.focusGifEnabled) folder.focusGifUrl else null
+            if (!focusGifUrl.isNullOrBlank()) {
+                var gifLoaded by remember(focusGifUrl) { mutableStateOf(false) }
+                val gifAlpha by animateFloatAsState(
+                    targetValue = if (gifLoaded) 1f else 0f,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "gifFadeIn"
+                )
+                AsyncImage(
+                    model = focusGifUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(cardShape)
+                        .graphicsLayer { alpha = gifAlpha },
+                    contentScale = ContentScale.FillBounds,
+                    onSuccess = { gifLoaded = true }
+                )
             }
 
             if (!folder.hideTitle) {
