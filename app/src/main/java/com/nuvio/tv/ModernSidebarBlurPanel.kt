@@ -33,7 +33,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -114,12 +113,7 @@ internal fun ModernSidebarBlurPanel(
         modifier = Modifier
             .fillMaxHeight()
             .graphicsLayer {
-                val p = sidebarExpandProgress
-                alpha = p
-                val s = 0.97f + (0.03f * p)
-                scaleX = s
-                scaleY = s
-                transformOrigin = TransformOrigin(0f, 0f)
+                alpha = sidebarExpandProgress
             }
             .then(expandedPanelBlurModifier)
             .graphicsLayer {
@@ -148,7 +142,7 @@ internal fun ModernSidebarBlurPanel(
                         if (focused) onDrawerItemFocused(drawerItems.size)
                     },
                     onClick = onSwitchProfile,
-                    modifier = Modifier.fillMaxWidth(0.92f)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         } else {
@@ -176,7 +170,7 @@ internal fun ModernSidebarBlurPanel(
                 .fillMaxWidth()
                 .weight(1f),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
             Column(
                 modifier = Modifier.offset(y = (-12).dp),
@@ -198,7 +192,7 @@ internal fun ModernSidebarBlurPanel(
                         },
                         onClick = { onDrawerItemClick(item.route) },
                         modifier = Modifier
-                            .fillMaxWidth(0.92f)
+                            .fillMaxWidth()
                             .focusRequester(drawerItemFocusRequesters.getValue(item.route))
                     )
                 }

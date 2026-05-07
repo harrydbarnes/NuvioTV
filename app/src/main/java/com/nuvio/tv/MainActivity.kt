@@ -1169,18 +1169,6 @@ private fun ModernSidebarScaffold(
     ) { expanded ->
         if (expanded) 1f else 0.9f
     }
-    val sidebarDeflateOffsetX by sidebarTransition.animateDp(
-        transitionSpec = {
-            if (targetState) {
-                tween(durationMillis = 345, easing = FastOutSlowInEasing)
-            } else {
-                tween(durationMillis = 395, easing = LinearOutSlowInEasing)
-            }
-        },
-        label = "sidebarDeflateOffsetX"
-    ) { expanded ->
-        if (expanded) 0.dp else (-10).dp
-    }
     val sidebarDeflateOffsetY by sidebarTransition.animateDp(
         transitionSpec = {
             if (targetState) {
@@ -1287,13 +1275,13 @@ private fun ModernSidebarScaffold(
                     .padding(start = 14.dp, top = 16.dp, bottom = 12.dp, end = 8.dp)
                     .offset {
                         IntOffset(
-                            (sidebarSlideX + sidebarDeflateOffsetX).roundToPx(),
+                            sidebarSlideX.roundToPx(),
                             sidebarDeflateOffsetY.roundToPx()
                         )
                     }
                     .graphicsLayer {
                         alpha = sidebarSurfaceAlpha
-                        scaleX = sidebarBloomScale
+                        scaleX = 1f
                         scaleY = sidebarBloomScale
                         transformOrigin = TransformOrigin(0f, 0f)
                     }
