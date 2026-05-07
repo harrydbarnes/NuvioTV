@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -122,10 +123,6 @@ internal fun ModernSidebarBlurPanel(
                 transformOrigin = TransformOrigin(0f, 0f)
             }
             .then(expandedPanelBlurModifier)
-            .graphicsLayer {
-                shape = panelShape
-                clip = true
-            }
             .clip(panelShape)
             .background(brush = panelBackgroundBrush, shape = panelShape)
             .border(width = 1.dp, color = panelBorderColor, shape = panelShape)
@@ -244,8 +241,11 @@ private fun SidebarNavigationItem(
         onClick = onClick,
         modifier = modifier
             .onFocusChanged {
-                isFocused = it.hasFocus
-                onFocusChanged(it.hasFocus)
+                val focused = it.hasFocus
+                if (isFocused != focused) {
+                    isFocused = focused
+                    onFocusChanged(focused)
+                }
             }
             .focusProperties { canFocus = focusEnabled },
         colors = CardDefaults.colors(
@@ -302,7 +302,7 @@ private fun SidebarNavigationItem(
             color = contentColor,
             modifier = Modifier
                 .weight(1f)
-                .graphicsLayer { alpha = labelAlpha },
+                .alpha(labelAlpha),
             style = androidx.tv.material3.MaterialTheme.typography.titleLarge
         )
     }
@@ -336,8 +336,11 @@ private fun SidebarProfileItem(
         onClick = onClick,
         modifier = modifier
             .onFocusChanged {
-                isFocused = it.hasFocus
-                onFocusChanged(it.hasFocus)
+                val focused = it.hasFocus
+                if (isFocused != focused) {
+                    isFocused = focused
+                    onFocusChanged(focused)
+                }
             }
             .focusProperties { canFocus = focusEnabled },
         colors = CardDefaults.colors(
@@ -376,7 +379,7 @@ private fun SidebarProfileItem(
             color = Color.White,
             modifier = Modifier
                 .weight(1f)
-                .graphicsLayer { alpha = labelAlpha },
+                .alpha(labelAlpha),
             style = androidx.tv.material3.MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.SemiBold
             )
@@ -387,12 +390,15 @@ private fun SidebarProfileItem(
 
 @Composable
 private fun rememberRawSvgPainter(rawIconRes: Int): Painter {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
     val sizePx = with(density) { 24.dp.roundToPx() }
-    return rememberAsyncImagePainter(
-        model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+    val request = remember(rawIconRes, sizePx, context) {
+        ImageRequest.Builder(context)
             .data(rawIconRes)
             .size(sizePx)
+            .memoryCacheKey("sidebar_raw_svg_$rawIconRes")
             .build()
-    )
+    }
+    return rememberAsyncImagePainter(model = request)
 }
