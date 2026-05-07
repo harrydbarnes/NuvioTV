@@ -380,7 +380,7 @@
     <string name="advanced_memory_only_vertical_scroll_subtitle">Não carrega imagens ao rolar as fileiras</string>
     <string name="advanced_compose_highlighter">Destacador de interface</string>
     <string name="advanced_compose_highlighter_subtitle">Destaca elementos recarregados na tela</string>
-    <string name="advanced_clear_cw_cache">Limpar cache de "Continuar Assistindo<"/string>
+    <string name="advanced_clear_cw_cache">Limpar cache de "Continuar Assistindo"</string>
     <string name="advanced_clear_cw_cache_subtitle">Apaga dados do "Continuar Assistindo"</string>
     <string name="advanced_clear_cw_cache_done">Cache limpo com sucesso</string>
     <string name="advanced_remember_last_profile">Lembrar último perfil</string>
@@ -551,6 +551,8 @@
     <string name="sub_forced_lang">Forçadas</string>
     <string name="sub_preferred_lang">Idioma preferido</string>
     <string name="sub_secondary_lang">Idioma secundário preferido</string>
+    <string name="sub_show_only_preferred_languages">Mostrar apenas idiomas preferidos</string>
+    <string name="sub_show_only_preferred_languages_desc">Ocultar todos os outros idiomas de legendas da lista de seleção</string>
     <string name="sub_organization">Organização de legendas</string>
     <string name="sub_size">Tamanho</string>
     <string name="sub_vertical_offset">Altura da legenda</string>
