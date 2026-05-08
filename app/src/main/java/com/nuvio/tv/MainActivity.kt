@@ -839,7 +839,7 @@ private fun LegacySidebarScaffold(
                             .offset(y = 28.dp)
                             .fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalAlignment = if (isExpanded) Alignment.CenterHorizontally else Alignment.Start
+                        horizontalAlignment = Alignment.Start
                     ) {
                         drawerItems.forEach { item ->
                             LegacySidebarButton(
