@@ -54,6 +54,7 @@ class TraktPublicListSourceResolver @Inject constructor(
     private companion object {
         private const val MAX_RESOLVE_CACHE_ENTRIES = 80
         private const val RESOLVE_CACHE_TTL_MS = 10 * 60 * 1000L
+        const val PAGE_LIMIT = 50
     }
 
     private data class ResolveCacheKey(
@@ -364,7 +365,4 @@ class TraktPublicListSourceResolver @Inject constructor(
         }
     }
 
-    companion object {
-        const val PAGE_LIMIT = 50
-    }
 }
