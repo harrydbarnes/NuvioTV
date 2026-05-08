@@ -75,13 +75,13 @@ class CatalogRepositoryImpl @Inject constructor(
         synchronized(catalogCache) { catalogCache[cacheKey] }
             ?.takeIf { now - it.cachedAtMs <= CACHE_TTL_MS }
             ?.let { cachedEntry ->
-            Log.d(
-                TAG,
-                "Catalog cache hit addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip url=$url"
-            )
-            emit(NetworkResult.Success(cachedEntry.row))
-            return@flow
-        }
+                Log.d(
+                    TAG,
+                    "Catalog cache hit addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip url=$url"
+                )
+                emit(NetworkResult.Success(cachedEntry.row))
+                return@flow
+            }
 
         emit(NetworkResult.Loading)
         Log.d(

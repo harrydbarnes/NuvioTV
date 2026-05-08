@@ -42,15 +42,25 @@ class TmdbCollectionSourceResolver @Inject constructor(
     private val tmdbApi: TmdbApi,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore
 ) {
+    private companion object {
+        private const val MAX_RESOLVE_CACHE_ENTRIES = 80
+        private const val RESOLVE_CACHE_TTL_MS = 10 * 60 * 1000L
+    }
+
     private data class ResolveCacheKey(
         val source: TmdbCollectionSource,
         val page: Int,
         val language: String
     )
 
-    private val resolveCache = object : LinkedHashMap<ResolveCacheKey, CatalogRow>(80, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ResolveCacheKey, CatalogRow>?): Boolean {
-            return size > 80
+    private data class ResolveCacheEntry(
+        val row: CatalogRow,
+        val cachedAtMs: Long
+    )
+
+    private val resolveCache = object : LinkedHashMap<ResolveCacheKey, ResolveCacheEntry>(MAX_RESOLVE_CACHE_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ResolveCacheKey, ResolveCacheEntry>?): Boolean {
+            return size > MAX_RESOLVE_CACHE_ENTRIES
         }
     }
 
@@ -59,10 +69,13 @@ class TmdbCollectionSourceResolver @Inject constructor(
     fun resolve(source: TmdbCollectionSource, page: Int = 1): Flow<NetworkResult<CatalogRow>> = flow {
         val language = tmdbSettingsDataStore.settings.first().language
         val cacheKey = ResolveCacheKey(source, page, language)
-        synchronized(resolveCache) { resolveCache[cacheKey] }?.let { cachedRow ->
-            emit(NetworkResult.Success(cachedRow))
-            return@flow
-        }
+        val now = System.currentTimeMillis()
+        synchronized(resolveCache) { resolveCache[cacheKey] }
+            ?.takeIf { now - it.cachedAtMs <= RESOLVE_CACHE_TTL_MS }
+            ?.let { cachedEntry ->
+                emit(NetworkResult.Success(cachedEntry.row))
+                return@flow
+            }
 
         emit(NetworkResult.Loading)
         val result = runCatching {
@@ -80,7 +93,9 @@ class TmdbCollectionSourceResolver @Inject constructor(
         }
         result.fold(
             onSuccess = {
-                synchronized(resolveCache) { resolveCache[cacheKey] = it }
+                synchronized(resolveCache) {
+                    resolveCache[cacheKey] = ResolveCacheEntry(it, System.currentTimeMillis())
+                }
                 emit(NetworkResult.Success(it))
             },
             onFailure = { emit(NetworkResult.Error(it.message ?: string(R.string.tmdb_error_load_source))) }
