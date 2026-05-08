@@ -20,6 +20,31 @@ class CatalogRepositoryImpl @Inject constructor(
 ) : CatalogRepository {
     companion object {
         private const val TAG = "CatalogRepository"
+        private const val MAX_CACHE_ENTRIES = 80
+        private const val CACHE_TTL_MS = 5 * 60 * 1000L
+    }
+
+    private data class CatalogCacheKey(
+        val url: String,
+        val addonId: String,
+        val addonName: String,
+        val catalogId: String,
+        val catalogName: String,
+        val type: String,
+        val skip: Int,
+        val skipStep: Int,
+        val supportsSkip: Boolean
+    )
+
+    private data class CatalogCacheEntry(
+        val row: CatalogRow,
+        val cachedAtMs: Long
+    )
+
+    private val catalogCache = object : LinkedHashMap<CatalogCacheKey, CatalogCacheEntry>(MAX_CACHE_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CatalogCacheKey, CatalogCacheEntry>?): Boolean {
+            return size > MAX_CACHE_ENTRIES
+        }
     }
 
     override fun getCatalog(
@@ -34,9 +59,31 @@ class CatalogRepositoryImpl @Inject constructor(
         extraArgs: Map<String, String>,
         supportsSkip: Boolean
     ): Flow<NetworkResult<CatalogRow>> = flow {
-        emit(NetworkResult.Loading)
-
         val url = buildCatalogUrl(addonBaseUrl, type, catalogId, skip, extraArgs)
+        val cacheKey = CatalogCacheKey(
+            url = url,
+            addonId = addonId,
+            addonName = addonName,
+            catalogId = catalogId,
+            catalogName = catalogName,
+            type = type,
+            skip = skip,
+            skipStep = skipStep,
+            supportsSkip = supportsSkip
+        )
+        val now = System.currentTimeMillis()
+        synchronized(catalogCache) { catalogCache[cacheKey] }
+            ?.takeIf { now - it.cachedAtMs <= CACHE_TTL_MS }
+            ?.let { cachedEntry ->
+            Log.d(
+                TAG,
+                "Catalog cache hit addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip url=$url"
+            )
+            emit(NetworkResult.Success(cachedEntry.row))
+            return@flow
+        }
+
+        emit(NetworkResult.Loading)
         Log.d(
             TAG,
             "Fetching catalog addonId=$addonId addonName=$addonName type=$type catalogId=$catalogId skip=$skip skipStep=$skipStep supportsSkip=$supportsSkip url=$url"
@@ -71,6 +118,11 @@ class CatalogRepositoryImpl @Inject constructor(
                     skipStep = effectiveSkipStep,
                     extraArgs = extraArgs
                 )
+                synchronized(catalogCache) {
+                    val cacheEntry = CatalogCacheEntry(catalogRow, System.currentTimeMillis())
+                    catalogCache[cacheKey] = cacheEntry
+                    catalogCache[cacheKey.copy(skipStep = effectiveSkipStep)] = cacheEntry
+                }
                 emit(NetworkResult.Success(catalogRow))
             }
             is NetworkResult.Error -> {

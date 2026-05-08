@@ -51,10 +51,27 @@ class TraktPublicListSourceResolver @Inject constructor(
     private val traktApi: TraktApi,
     private val traktAuthService: TraktAuthService
 ) {
+    private data class ResolveCacheKey(
+        val source: TraktCollectionSource,
+        val page: Int
+    )
+
+    private val resolveCache = object : LinkedHashMap<ResolveCacheKey, CatalogRow>(80, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ResolveCacheKey, CatalogRow>?): Boolean {
+            return size > 80
+        }
+    }
+
     private fun string(resId: Int): String = appContext.getString(resId)
     private fun string(resId: Int, vararg args: Any): String = appContext.getString(resId, *args)
 
     fun resolve(source: TraktCollectionSource, page: Int = 1): Flow<NetworkResult<CatalogRow>> = flow {
+        val cacheKey = ResolveCacheKey(source, page)
+        synchronized(resolveCache) { resolveCache[cacheKey] }?.let { cachedRow ->
+            emit(NetworkResult.Success(cachedRow))
+            return@flow
+        }
+
         emit(NetworkResult.Loading)
         val result = runCatching {
             withContext(Dispatchers.IO) {
@@ -90,7 +107,10 @@ class TraktPublicListSourceResolver @Inject constructor(
             }
         }
         result.fold(
-            onSuccess = { emit(NetworkResult.Success(it)) },
+            onSuccess = {
+                synchronized(resolveCache) { resolveCache[cacheKey] = it }
+                emit(NetworkResult.Success(it))
+            },
             onFailure = { emit(NetworkResult.Error(it.message ?: string(R.string.collections_editor_error_load_trakt_list))) }
         )
     }

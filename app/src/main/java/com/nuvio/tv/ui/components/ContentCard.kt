@@ -26,9 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Check
@@ -71,7 +69,6 @@ import coil3.request.ImageRequest
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import com.nuvio.tv.ui.util.recompositionHighlighter
-import com.nuvio.tv.ui.screens.home.LocalFastScrollActive
 import com.nuvio.tv.ui.theme.ThemeColors
 import kotlinx.coroutines.delay
 
@@ -180,17 +177,13 @@ fun ContentCard(
         }
     }
 
-    // Only pay the animation cost on the card that is actually focused/expanding.
-    // Unfocused cards snap directly to baseCardWidth — no animation state overhead.
-    val isFastScrollActive = LocalFastScrollActive.current
-    val animatedCardWidth = when {
+    // Width changes in LazyRows trigger measurement for neighboring cards on every
+    // animation frame. Snap the layout size so focus changes stay stable.
+    val cardLayoutWidth = when {
         !focusedPosterBackdropExpandEnabled -> baseCardWidth
         !isFocused && !isBackdropExpanded -> baseCardWidth
-        else -> {
-            val targetCardWidth = if (isBackdropExpanded) expandedCardWidth else baseCardWidth
-            val width by animateDpAsState(targetValue = targetCardWidth, label = "contentCardWidth")
-            width
-        }
+        isBackdropExpanded -> expandedCardWidth
+        else -> baseCardWidth
     }
     val metaTokens = if (isBackdropExpanded) {
         remember(item.type, item.rawType, item.genres, item.releaseInfo, item.imdbRating, item.seasonCount) {
@@ -227,7 +220,7 @@ fun ContentCard(
 
     Column(
         modifier = modifier
-            .width(animatedCardWidth)
+            .width(cardLayoutWidth)
             .recompositionHighlighter()
     ) {
         val context = LocalContext.current

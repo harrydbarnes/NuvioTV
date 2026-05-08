@@ -42,13 +42,31 @@ class TmdbCollectionSourceResolver @Inject constructor(
     private val tmdbApi: TmdbApi,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore
 ) {
+    private data class ResolveCacheKey(
+        val source: TmdbCollectionSource,
+        val page: Int,
+        val language: String
+    )
+
+    private val resolveCache = object : LinkedHashMap<ResolveCacheKey, CatalogRow>(80, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ResolveCacheKey, CatalogRow>?): Boolean {
+            return size > 80
+        }
+    }
+
     private fun string(resId: Int): String = appContext.getString(resId)
 
     fun resolve(source: TmdbCollectionSource, page: Int = 1): Flow<NetworkResult<CatalogRow>> = flow {
+        val language = tmdbSettingsDataStore.settings.first().language
+        val cacheKey = ResolveCacheKey(source, page, language)
+        synchronized(resolveCache) { resolveCache[cacheKey] }?.let { cachedRow ->
+            emit(NetworkResult.Success(cachedRow))
+            return@flow
+        }
+
         emit(NetworkResult.Loading)
         val result = runCatching {
             withContext(Dispatchers.IO) {
-                val language = tmdbSettingsDataStore.settings.first().language
                 when (source.sourceType) {
                     TmdbCollectionSourceType.LIST -> resolveList(source, language, page)
                     TmdbCollectionSourceType.COLLECTION -> resolveCollection(source, language)
@@ -61,7 +79,10 @@ class TmdbCollectionSourceResolver @Inject constructor(
             }
         }
         result.fold(
-            onSuccess = { emit(NetworkResult.Success(it)) },
+            onSuccess = {
+                synchronized(resolveCache) { resolveCache[cacheKey] = it }
+                emit(NetworkResult.Success(it))
+            },
             onFailure = { emit(NetworkResult.Error(it.message ?: string(R.string.tmdb_error_load_source))) }
         )
     }

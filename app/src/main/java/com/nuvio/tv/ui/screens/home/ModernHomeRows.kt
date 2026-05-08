@@ -4,7 +4,6 @@ package com.nuvio.tv.ui.screens.home
 
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -923,20 +922,11 @@ private fun ModernCarouselCard(
     } else {
         cardHeight * (16f / 9f)
     }
-    val targetCardWidth = if (focusedPosterBackdropExpandEnabled && isBackdropExpanded) {
+    val cardLayoutWidth = if (focusedPosterBackdropExpandEnabled && isBackdropExpanded) {
         expandedCardWidth
     } else {
         cardWidth
     }
-    val animatedCardWidthState = if (focusedPosterBackdropExpandEnabled) {
-        animateDpAsState(
-            targetValue = targetCardWidth,
-            label = "modernCardWidth"
-        )
-    } else {
-        rememberUpdatedState(cardWidth)
-    }
-    val animatedCardWidth by animatedCardWidthState
     // Freeze the logo URL for row cards - enrichment updates must not cause flickering.
     // The first non-blank value wins and is never replaced.
     // Primary source of truth is the data-layer frozen value (survives navigation);
@@ -1106,7 +1096,8 @@ private fun ModernCarouselCard(
 
     Column(
         modifier = modifier
-            .width(animatedCardWidth)
+            // Snapping width avoids per-frame LazyRow remeasurement when a card expands.
+            .width(cardLayoutWidth)
             .recompositionHighlighter(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
