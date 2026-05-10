@@ -122,6 +122,7 @@ data class SubtitleStyleSettings(
     val preferredLanguage: String = "en",
     val secondaryPreferredLanguage: String? = null,
     val showOnlyPreferredLanguages: Boolean = false,
+    val preferForcedWhenAudioMatches: Boolean = false,
     val size: Int = 120, // Percentage (50-200)
     val verticalOffset: Int = 5, // Percentage from bottom (-20 to 50)
     val bold: Boolean = false,
@@ -361,6 +362,7 @@ class PlayerSettingsDataStore @Inject constructor(
     private val subtitlePreferredLanguageKey = stringPreferencesKey("subtitle_preferred_language")
     private val subtitleSecondaryLanguageKey = stringPreferencesKey("subtitle_secondary_language")
     private val subtitleShowOnlyPreferredLanguagesKey = booleanPreferencesKey("subtitle_show_only_preferred_languages")
+    private val subtitlePreferForcedWhenAudioMatchesKey = booleanPreferencesKey("subtitle_prefer_forced_when_audio_matches")
     private val subtitleSizeKey = intPreferencesKey("subtitle_size")
     private val subtitleVerticalOffsetKey = intPreferencesKey("subtitle_vertical_offset")
     private val subtitleBoldKey = booleanPreferencesKey("subtitle_bold")
@@ -432,7 +434,16 @@ class PlayerSettingsDataStore @Inject constructor(
                 if (preferredSubtitleLanguage != null) {
                     val normalizedPreferredSubtitleLanguage =
                         normalizeSelectableLanguageCode(preferredSubtitleLanguage)
-                    if (normalizedPreferredSubtitleLanguage != preferredSubtitleLanguage) {
+                    if (normalizedPreferredSubtitleLanguage == SUBTITLE_LANGUAGE_FORCED) {
+                        val fallbackSubtitleLanguage = prefs[subtitleSecondaryLanguageKey]
+                            ?.let(::normalizeSelectableLanguageCode)
+                            ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED }
+                        prefs[subtitlePreferForcedWhenAudioMatchesKey] = true
+                        prefs[subtitlePreferredLanguageKey] = fallbackSubtitleLanguage ?: "en"
+                        if (fallbackSubtitleLanguage != null) {
+                            prefs.remove(subtitleSecondaryLanguageKey)
+                        }
+                    } else if (normalizedPreferredSubtitleLanguage != preferredSubtitleLanguage) {
                         prefs[subtitlePreferredLanguageKey] = normalizedPreferredSubtitleLanguage
                     }
                 }
@@ -441,7 +452,10 @@ class PlayerSettingsDataStore @Inject constructor(
                 if (secondarySubtitleLanguage != null) {
                     val normalizedSecondarySubtitleLanguage =
                         normalizeSelectableLanguageCode(secondarySubtitleLanguage)
-                    if (normalizedSecondarySubtitleLanguage != secondarySubtitleLanguage) {
+                    if (normalizedSecondarySubtitleLanguage == SUBTITLE_LANGUAGE_FORCED) {
+                        prefs[subtitlePreferForcedWhenAudioMatchesKey] = true
+                        prefs.remove(subtitleSecondaryLanguageKey)
+                    } else if (normalizedSecondarySubtitleLanguage != secondarySubtitleLanguage) {
                         prefs[subtitleSecondaryLanguageKey] = normalizedSecondarySubtitleLanguage
                     }
                 }
@@ -454,6 +468,25 @@ class PlayerSettingsDataStore @Inject constructor(
      */
     val playerSettings: Flow<PlayerSettings> = profileManager.activeProfileId.flatMapLatest { pid ->
         factory.get(pid, FEATURE).data.map { prefs ->
+            val rawSubtitlePreferredLanguage = normalizeSelectableLanguageCode(
+                prefs[subtitlePreferredLanguageKey] ?: "en"
+            )
+            val rawSubtitleSecondaryLanguage = prefs[subtitleSecondaryLanguageKey]
+                ?.let(::normalizeSelectableLanguageCode)
+            val migratedSubtitlePreferredLanguage = when {
+                rawSubtitlePreferredLanguage == SUBTITLE_LANGUAGE_FORCED &&
+                    rawSubtitleSecondaryLanguage != null &&
+                    rawSubtitleSecondaryLanguage != SUBTITLE_LANGUAGE_FORCED -> rawSubtitleSecondaryLanguage
+                rawSubtitlePreferredLanguage == SUBTITLE_LANGUAGE_FORCED -> "en"
+                else -> rawSubtitlePreferredLanguage
+            }
+            val migratedSubtitleSecondaryLanguage = rawSubtitleSecondaryLanguage
+                ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED || rawSubtitlePreferredLanguage == SUBTITLE_LANGUAGE_FORCED }
+            val migratedPreferForcedWhenAudioMatches =
+                (prefs[subtitlePreferForcedWhenAudioMatchesKey] ?: false) ||
+                    rawSubtitlePreferredLanguage == SUBTITLE_LANGUAGE_FORCED ||
+                    rawSubtitleSecondaryLanguage == SUBTITLE_LANGUAGE_FORCED
+
             PlayerSettings(
                 playerPreference = prefs[playerPreferenceKey]?.let {
                     runCatching { PlayerPreference.valueOf(it) }.getOrDefault(PlayerPreference.INTERNAL)
@@ -535,12 +568,10 @@ class PlayerSettingsDataStore @Inject constructor(
                 addonSubtitleStartupMode = parseAddonSubtitleStartupMode(prefs[addonSubtitleStartupModeKey]),
                 resizeMode = (prefs[resizeModeKey] ?: 0).coerceIn(0, 4),
                 subtitleStyle = SubtitleStyleSettings(
-                    preferredLanguage = normalizeSelectableLanguageCode(
-                        prefs[subtitlePreferredLanguageKey] ?: "en"
-                    ),
-                    secondaryPreferredLanguage = prefs[subtitleSecondaryLanguageKey]
-                        ?.let(::normalizeSelectableLanguageCode),
+                    preferredLanguage = migratedSubtitlePreferredLanguage,
+                    secondaryPreferredLanguage = migratedSubtitleSecondaryLanguage,
                     showOnlyPreferredLanguages = prefs[subtitleShowOnlyPreferredLanguagesKey] ?: false,
+                    preferForcedWhenAudioMatches = migratedPreferForcedWhenAudioMatches,
                     size = prefs[subtitleSizeKey] ?: 100,
                     verticalOffset = prefs[subtitleVerticalOffsetKey] ?: 5,
                     bold = prefs[subtitleBoldKey] ?: false,
@@ -964,6 +995,12 @@ class PlayerSettingsDataStore @Inject constructor(
                 }
                 prefs[addonSubtitleStartupModeAutoPreferredKey] = false
             }
+        }
+    }
+
+    suspend fun setSubtitlePreferForcedWhenAudioMatches(enabled: Boolean) {
+        store().edit { prefs ->
+            prefs[subtitlePreferForcedWhenAudioMatchesKey] = enabled
         }
     }
 

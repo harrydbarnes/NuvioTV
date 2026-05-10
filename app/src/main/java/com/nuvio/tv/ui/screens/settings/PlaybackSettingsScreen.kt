@@ -284,6 +284,9 @@ fun PlaybackSettingsContent(
                 onSetSubtitleShowOnlyPreferredLanguages = { enabled ->
                     coroutineScope.launch { viewModel.setSubtitleShowOnlyPreferredLanguages(enabled) }
                 },
+                onSetSubtitlePreferForcedWhenAudioMatches = { enabled ->
+                    coroutineScope.launch { viewModel.setSubtitlePreferForcedWhenAudioMatches(enabled) }
+                },
                 onSetSubtitleOutlineEnabled = { enabled -> coroutineScope.launch { viewModel.setSubtitleOutlineEnabled(enabled) } },
                 onSetUseLibass = { enabled -> coroutineScope.launch { viewModel.setUseLibass(enabled) } },
                 onSetLibassRenderType = { renderType -> coroutineScope.launch { viewModel.setLibassRenderType(renderType) } },

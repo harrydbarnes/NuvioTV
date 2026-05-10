@@ -987,7 +987,9 @@ internal fun PlayerRuntimeController.subtitleLanguageTargets(): List<String> {
 
 internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
     subtitleTracks: List<TrackInfo>,
-    targets: List<String>
+    targets: List<String>,
+    preferForcedWhenAudioMatches: Boolean = false,
+    selectedAudioTrack: TrackInfo? = null
 ): Int {
     for ((targetPosition, target) in targets.withIndex()) {
         if (target == SUBTITLE_LANGUAGE_FORCED) {
@@ -1000,7 +1002,15 @@ internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
         val candidateIndexes = subtitleTracks.indices.filter { index ->
             PlayerSubtitleUtils.matchesLanguageCode(subtitleTracks[index].language, target)
         }
+        val audioMatchesTarget = preferForcedWhenAudioMatches &&
+            selectedAudioTrack != null &&
+            audioTrackMatchesSubtitleTarget(selectedAudioTrack, target)
         if (candidateIndexes.isEmpty()) {
+            if (audioMatchesTarget) {
+                val forcedIndex = findForcedSubtitleTrackIndexForTarget(subtitleTracks, target, selectedAudioTrack)
+                if (forcedIndex >= 0) return forcedIndex
+                if (targetPosition == 0) return -1
+            }
             if (normalizedTarget == "pt-br") {
                 val brazilianFromGenericPt = findBrazilianPortugueseInGenericPtTracks(subtitleTracks)
                 if (brazilianFromGenericPt >= 0) {
@@ -1029,12 +1039,33 @@ internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
             }
             continue
         }
-        if (candidateIndexes.size == 1) {
+        if (audioMatchesTarget) {
+            val forcedIndex = findForcedSubtitleTrackIndexForTarget(subtitleTracks, target, selectedAudioTrack)
+            if (forcedIndex >= 0) {
+                return forcedIndex
+            }
+            Log.d(
+                PlayerRuntimeController.TAG,
+                "AUTO_SUB no forced subtitle for matching audio/subtitle language target=$target"
+            )
+            return -1
+        }
+
+        val selectableCandidateIndexes = if (preferForcedWhenAudioMatches) {
+            candidateIndexes.filter { index -> !subtitleTracks[index].isForced }
+        } else {
+            candidateIndexes
+        }
+        if (selectableCandidateIndexes.isEmpty()) {
+            continue
+        }
+
+        if (selectableCandidateIndexes.size == 1) {
             // For regional targets, verify the single candidate is actually the right variant.
             // A track with language="por" matches both "pt" and "pt-br" by language code,
             // but may be the wrong accent based on its name tags.
             if (normalizedTarget == "pt" || normalizedTarget == "es") {
-                val track = subtitleTracks[candidateIndexes.first()]
+                val track = subtitleTracks[selectableCandidateIndexes.first()]
                 val variant = PlayerSubtitleUtils.detectTrackLanguageVariant(
                     language = track.language,
                     name = track.name,
@@ -1046,13 +1077,13 @@ internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
                     continue
                 }
             }
-            return candidateIndexes.first()
+            return selectableCandidateIndexes.first()
         }
 
         if (normalizedTarget == "pt" || normalizedTarget == "pt-br") {
             val tieBroken = breakPortugueseSubtitleTie(
                 subtitleTracks = subtitleTracks,
-                candidateIndexes = candidateIndexes,
+                candidateIndexes = selectableCandidateIndexes,
                 normalizedTarget = normalizedTarget
             )
             if (tieBroken >= 0) return tieBroken
@@ -1060,12 +1091,12 @@ internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
         if (normalizedTarget == "es" || normalizedTarget == "es-419") {
             val tieBroken = breakSpanishSubtitleTie(
                 subtitleTracks = subtitleTracks,
-                candidateIndexes = candidateIndexes,
+                candidateIndexes = selectableCandidateIndexes,
                 normalizedTarget = normalizedTarget
             )
             if (tieBroken >= 0) return tieBroken
         }
-        return candidateIndexes.first()
+        return selectableCandidateIndexes.first()
     }
     return -1
 }
@@ -1073,6 +1104,84 @@ internal fun PlayerRuntimeController.findBestInternalSubtitleTrackIndex(
 private fun findBestForcedSubtitleTrackIndex(subtitleTracks: List<TrackInfo>): Int {
     // isForced is set from both the ExoPlayer SELECTION_FLAG_FORCED and name/label/id containing "forced"
     return subtitleTracks.indexOfFirst { it.isForced }
+}
+
+private fun findForcedSubtitleTrackIndexForTarget(
+    subtitleTracks: List<TrackInfo>,
+    target: String,
+    selectedAudioTrack: TrackInfo
+): Int {
+    return subtitleTracks.indices.firstOrNull { index ->
+        val track = subtitleTracks[index]
+        track.isForced &&
+            (
+                PlayerSubtitleUtils.matchesLanguageCode(track.language, target) ||
+                    subtitleTrackLabelContainsLanguage(track, target)
+                ) &&
+            (
+                forcedSubtitleTrackMatchesAudio(track, selectedAudioTrack) ||
+                    subtitleTrackLabelContainsLanguage(track, target)
+                )
+    } ?: -1
+}
+
+private fun audioTrackMatchesSubtitleTarget(audioTrack: TrackInfo, target: String): Boolean {
+    if (PlayerSubtitleUtils.matchesLanguageCode(audioTrack.language, target)) return true
+
+    val normalizedTarget = PlayerSubtitleUtils.normalizeLanguageCode(target)
+    val targetName = languageCodeToName(normalizedTarget)
+    val audioText = normalizedSearchText(
+        listOfNotNull(audioTrack.name, audioTrack.language, audioTrack.trackId).joinToString(" ")
+    )
+    return normalizedSearchTextContainsToken(audioText, normalizedTarget) ||
+        normalizedSearchTextContainsPhrase(audioText, targetName)
+}
+
+private fun forcedSubtitleTrackMatchesAudio(subtitleTrack: TrackInfo, audioTrack: TrackInfo): Boolean {
+    val audioLanguage = audioTrack.language?.takeIf { it.isNotBlank() }
+    if (audioLanguage != null && PlayerSubtitleUtils.matchesLanguageCode(subtitleTrack.language, audioLanguage)) {
+        return true
+    }
+
+    val normalizedAudioLanguage = audioLanguage?.let(PlayerSubtitleUtils::normalizeLanguageCode)
+    val audioLanguageName = normalizedAudioLanguage?.let(::languageCodeToName)
+    val subtitleText = normalizedSearchText(
+        listOfNotNull(subtitleTrack.name, subtitleTrack.language, subtitleTrack.trackId).joinToString(" ")
+    )
+    return listOfNotNull(normalizedAudioLanguage)
+        .any { normalizedSearchTextContainsToken(subtitleText, it) } ||
+        listOfNotNull(audioLanguageName)
+            .any { normalizedSearchTextContainsPhrase(subtitleText, it) }
+}
+
+private fun subtitleTrackLabelContainsLanguage(subtitleTrack: TrackInfo, language: String): Boolean {
+    val normalizedLanguage = PlayerSubtitleUtils.normalizeLanguageCode(language)
+    val languageName = languageCodeToName(normalizedLanguage)
+    val subtitleText = normalizedSearchText(
+        listOfNotNull(subtitleTrack.name, subtitleTrack.language, subtitleTrack.trackId).joinToString(" ")
+    )
+    return normalizedSearchTextContainsToken(subtitleText, normalizedLanguage) ||
+        normalizedSearchTextContainsPhrase(subtitleText, languageName)
+}
+
+private fun normalizedSearchText(value: String): String {
+    return value
+        .lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private fun normalizedSearchTextContainsToken(haystack: String, token: String): Boolean {
+    val normalizedToken = normalizedSearchText(token)
+    if (normalizedToken.isBlank()) return false
+    return haystack.split(' ').any { it == normalizedToken } ||
+        haystack.contains(normalizedToken.replace(" ", ""))
+}
+
+private fun normalizedSearchTextContainsPhrase(haystack: String, phrase: String): Boolean {
+    val normalizedPhrase = normalizedSearchText(phrase)
+    return normalizedPhrase.isNotBlank() && haystack.contains(normalizedPhrase)
 }
 
 internal fun PlayerRuntimeController.findBrazilianPortugueseInGenericPtTracks(
@@ -1192,6 +1301,10 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
             "addonCount=${state.addonSubtitles.size}, selectedAddon=${state.selectedAddonSubtitle?.lang}"
     )
     if (targets.isEmpty()) {
+        if (state.subtitleStyle.preferForcedWhenAudioMatches) {
+            tryAutoSelectForcedSubtitleForAudioOnly(state)
+            return
+        }
         autoSubtitleSelected = true
         Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: preferred=none")
         return
@@ -1199,7 +1312,9 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
 
     val internalIndex = findBestInternalSubtitleTrackIndex(
         subtitleTracks = state.subtitleTracks,
-        targets = targets
+        targets = targets,
+        preferForcedWhenAudioMatches = state.subtitleStyle.preferForcedWhenAudioMatches,
+        selectedAudioTrack = state.audioTracks.getOrNull(state.selectedAudioTrackIndex)
     )
     if (internalIndex >= 0 && hasScannedTextTracksOnce) {
         // Determine which target position this internal match satisfies,
@@ -1271,7 +1386,13 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
         val selectedMatchesPrimary = PlayerSubtitleUtils.matchesLanguageCode(
             state.selectedAddonSubtitle!!.lang, targets.first()
         )
-        if (selectedMatchesPrimary) {
+        val selectedAudioTrack = state.audioTracks.getOrNull(state.selectedAudioTrackIndex)
+        val primaryTargetMatchesAudio = state.subtitleStyle.preferForcedWhenAudioMatches &&
+            selectedAudioTrack != null &&
+            audioTrackMatchesSubtitleTarget(selectedAudioTrack, targets.first())
+        val selectedSatisfiesForcedPreference =
+            !primaryTargetMatchesAudio || addonSubtitleIsForced(state.selectedAddonSubtitle!!)
+        if (selectedMatchesPrimary && selectedSatisfiesForcedPreference) {
             autoSubtitleSelected = true
             Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: matching addon already selected (primary match)")
             return
@@ -1300,9 +1421,25 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
 
     val addonMatch = run {
         // Try each target in priority order so primary language is preferred over secondary.
+        val selectedAudioTrack = state.audioTracks.getOrNull(state.selectedAudioTrackIndex)
         for (target in targets) {
-            val match = state.addonSubtitles.firstOrNull { subtitle ->
-                PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, target)
+            val targetMatchesAudio = state.subtitleStyle.preferForcedWhenAudioMatches &&
+                selectedAudioTrack != null &&
+                audioTrackMatchesSubtitleTarget(selectedAudioTrack, target)
+            val match = if (targetMatchesAudio) {
+                state.addonSubtitles.firstOrNull { subtitle ->
+                    addonSubtitleIsForced(subtitle) &&
+                        PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, target)
+                }
+            } else {
+                state.addonSubtitles.firstOrNull { subtitle ->
+                    !state.subtitleStyle.preferForcedWhenAudioMatches &&
+                        PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, target)
+                } ?: state.addonSubtitles.firstOrNull { subtitle ->
+                    state.subtitleStyle.preferForcedWhenAudioMatches &&
+                        !addonSubtitleIsForced(subtitle) &&
+                        PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, target)
+                }
             }
             if (match != null) {
                 Log.d(
@@ -1311,6 +1448,21 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
                         "(addons=${state.addonSubtitles.size}, targets=$targets)"
                 )
                 return@run match
+            }
+            if (targetMatchesAudio) {
+                if (state.isLoadingAddonSubtitles) {
+                    Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer forced addon fallback: addons still loading")
+                    return
+                }
+                autoSubtitleSelected = true
+                if (state.selectedSubtitleTrackIndex >= 0 || state.selectedAddonSubtitle != null) {
+                    disableSubtitles()
+                    _uiState.update {
+                        it.copy(selectedSubtitleTrackIndex = -1, selectedAddonSubtitle = null)
+                    }
+                }
+                Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: matching audio target=$target has no forced addon")
+                return
             }
         }
         null
@@ -1322,6 +1474,73 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
     } else {
         Log.d(PlayerRuntimeController.TAG, "AUTO_SUB no addon match for targets=$targets")
     }
+}
+
+private fun addonSubtitleIsForced(subtitle: com.nuvio.tv.domain.model.Subtitle): Boolean {
+    return listOf(subtitle.id, subtitle.url)
+        .any { it.contains("forced", ignoreCase = true) }
+}
+
+private fun PlayerRuntimeController.tryAutoSelectForcedSubtitleForAudioOnly(state: PlayerUiState) {
+    val selectedAudioTrack = state.audioTracks.getOrNull(state.selectedAudioTrackIndex)
+    if (selectedAudioTrack == null) {
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer forced-only: no selected audio track")
+        return
+    }
+
+    val internalIndex = state.subtitleTracks.indexOfFirst { track ->
+        track.isForced && forcedSubtitleTrackMatchesAudio(track, selectedAudioTrack)
+    }
+    if (internalIndex >= 0 && hasScannedTextTracksOnce) {
+        autoSubtitleSelected = true
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB forced-only pick internal index=$internalIndex")
+        selectSubtitleTrack(internalIndex)
+        _uiState.update { it.copy(selectedSubtitleTrackIndex = internalIndex, selectedAddonSubtitle = null) }
+        return
+    }
+
+    if (!hasScannedTextTracksOnce) {
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer forced-only: text tracks not scanned yet")
+        return
+    }
+
+    val addonMatch = state.addonSubtitles.firstOrNull { subtitle ->
+        addonSubtitleIsForced(subtitle) && addonSubtitleMatchesAudio(subtitle, selectedAudioTrack)
+    }
+    if (addonMatch != null) {
+        autoSubtitleSelected = true
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB forced-only pick addon lang=${addonMatch.lang} id=${addonMatch.id}")
+        selectAddonSubtitle(addonMatch)
+        return
+    }
+
+    if (state.isLoadingAddonSubtitles) {
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer forced-only: addons still loading")
+        return
+    }
+
+    autoSubtitleSelected = true
+    if (state.selectedSubtitleTrackIndex >= 0 || state.selectedAddonSubtitle != null) {
+        disableSubtitles()
+        _uiState.update { it.copy(selectedSubtitleTrackIndex = -1, selectedAddonSubtitle = null) }
+    }
+    Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop forced-only: no forced subtitle matching selected audio")
+}
+
+private fun addonSubtitleMatchesAudio(
+    subtitle: com.nuvio.tv.domain.model.Subtitle,
+    audioTrack: TrackInfo
+): Boolean {
+    val audioLanguage = audioTrack.language?.takeIf { it.isNotBlank() }
+    if (audioLanguage != null && PlayerSubtitleUtils.matchesLanguageCode(subtitle.lang, audioLanguage)) {
+        return true
+    }
+
+    val normalizedAudioLanguage = audioLanguage?.let(PlayerSubtitleUtils::normalizeLanguageCode)
+    val audioLanguageName = normalizedAudioLanguage?.let(::languageCodeToName)
+    val subtitleText = normalizedSearchText(listOf(subtitle.id, subtitle.url, subtitle.lang).joinToString(" "))
+    return listOfNotNull(normalizedAudioLanguage).any { normalizedSearchTextContainsToken(subtitleText, it) } ||
+        listOfNotNull(audioLanguageName).any { normalizedSearchTextContainsPhrase(subtitleText, it) }
 }
 
 internal fun PlayerRuntimeController.startFrameRateProbe(

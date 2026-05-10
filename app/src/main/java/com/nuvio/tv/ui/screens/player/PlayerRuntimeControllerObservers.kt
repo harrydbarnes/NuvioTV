@@ -324,11 +324,13 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
             )
             val subtitlePreferenceChanged =
                 lastSubtitlePreferredLanguage != settings.subtitleStyle.preferredLanguage ||
-                    lastSubtitleSecondaryLanguage != settings.subtitleStyle.secondaryPreferredLanguage
+                    lastSubtitleSecondaryLanguage != settings.subtitleStyle.secondaryPreferredLanguage ||
+                    lastSubtitlePreferForcedWhenAudioMatches != settings.subtitleStyle.preferForcedWhenAudioMatches
             if (subtitlePreferenceChanged) {
                 if (!subtitleDisabledByPersistedPreference && !subtitleAddonRestoredByPersistedPreference) autoSubtitleSelected = false
                 lastSubtitlePreferredLanguage = settings.subtitleStyle.preferredLanguage
                 lastSubtitleSecondaryLanguage = settings.subtitleStyle.secondaryPreferredLanguage
+                lastSubtitlePreferForcedWhenAudioMatches = settings.subtitleStyle.preferForcedWhenAudioMatches
                 tryAutoSelectPreferredSubtitleFromAvailableTracks()
             }
 

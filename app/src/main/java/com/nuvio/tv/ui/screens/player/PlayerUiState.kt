@@ -122,6 +122,13 @@ data class PlayerUiState(
     val nextEpisodeAutoPlaySearching: Boolean = false,
     val nextEpisodeAutoPlaySourceName: String? = null,
     val nextEpisodeAutoPlayCountdownSec: Int? = null,
+    val showTraktRatingPrompt: Boolean = false,
+    val traktRatingValue: Int = 5,
+    val traktRatingExistingValue: Int? = null,
+    val traktRatingLoading: Boolean = false,
+    val traktRatingSubmitting: Boolean = false,
+    val traktRatingSubmitted: Boolean = false,
+    val traktRatingError: String? = null,
     val streamAutoPlayMode: StreamAutoPlayMode = StreamAutoPlayMode.MANUAL,
     // Stream source badge
     val showStreamSourceIndicator: Boolean = false,
@@ -255,6 +262,9 @@ sealed class PlayerEvent {
     data object OnDismissSkipIntro : PlayerEvent()
     data object OnPlayNextEpisode : PlayerEvent()
     data object OnDismissNextEpisodeCard : PlayerEvent()
+    data class OnSetTraktRating(val rating: Int) : PlayerEvent()
+    data object OnSubmitTraktRating : PlayerEvent()
+    data object OnDismissTraktRatingPrompt : PlayerEvent()
     // Subtitle style events (for in-player style tab)
     data class OnSetSubtitleSize(val size: Int) : PlayerEvent()
     data class OnSetSubtitleTextColor(val color: Int) : PlayerEvent()
