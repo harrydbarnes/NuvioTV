@@ -135,7 +135,7 @@ fun ClassicHomeContent(
     // Scroll to top when triggered from sidebar Home button.
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
-            columnListState.scrollToItem(0, 0)
+            columnListState.quickAnimateScrollToTop()
         }
     }
 

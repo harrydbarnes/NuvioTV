@@ -109,7 +109,7 @@ fun GridHomeContent(
     // Scroll to top when triggered from sidebar Home button.
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
-            gridState.scrollToItem(0, 0)
+            gridState.quickAnimateScrollToTop()
         }
     }
 

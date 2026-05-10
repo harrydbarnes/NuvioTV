@@ -241,7 +241,7 @@ fun ModernHomeContent(
 
     LaunchedEffect(scrollToTopTrigger) {
         if (scrollToTopTrigger > 0) {
-            verticalRowListState.scrollToItem(0, 0)
+            verticalRowListState.quickAnimateScrollToTop()
         }
     }
 
