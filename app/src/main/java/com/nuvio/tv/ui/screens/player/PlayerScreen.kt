@@ -110,6 +110,7 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.data.local.LibassRenderType
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
+import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.ui.theme.NuvioColors
@@ -219,7 +220,7 @@ fun PlayerScreen(
         handleBackPress()
     }
 
-    LaunchedEffect(uiState.playbackEnded, uiState.error) {
+    LaunchedEffect(uiState.playbackEnded, uiState.error, uiState.showTraktRatingPrompt) {
         if (uiState.playbackEnded && uiState.error == null &&
             !uiState.nextEpisodeAutoPlaySearching &&
             uiState.nextEpisodeAutoPlayCountdownSec == null &&
@@ -732,6 +733,8 @@ fun PlayerScreen(
             submitting = uiState.traktRatingPromptSubmitting,
             submitted = uiState.traktRatingPromptSubmitted,
             error = uiState.traktRatingPromptError,
+            minRating = TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE,
+            maxRating = TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE,
             onRatingChanged = { viewModel.onEvent(PlayerEvent.OnSetTraktRatingPromptValue(it)) },
             onSubmit = { viewModel.onEvent(PlayerEvent.OnSubmitTraktRatingPrompt) },
             onDismiss = {
@@ -2663,6 +2666,8 @@ private fun TraktRatingPrompt(
     submitting: Boolean,
     submitted: Boolean,
     error: String?,
+    minRating: Int,
+    maxRating: Int,
     onRatingChanged: (Int) -> Unit,
     onSubmit: () -> Unit,
     onDismiss: () -> Unit,
@@ -2692,11 +2697,11 @@ private fun TraktRatingPrompt(
                         if (native.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
                         when (native.keyCode) {
                             KeyEvent.KEYCODE_DPAD_LEFT -> {
-                                onRatingChanged((rating - 1).coerceAtLeast(1))
+                                onRatingChanged((rating - 1).coerceAtLeast(minRating))
                                 true
                             }
                             KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                                onRatingChanged((rating + 1).coerceAtMost(10))
+                                onRatingChanged((rating + 1).coerceAtMost(maxRating))
                                 true
                             }
                             else -> false
@@ -2728,12 +2733,13 @@ private fun TraktRatingPrompt(
                     )
                     Text(
                         text = buildString {
-                            repeat(10) { index ->
-                                append(if (index < rating) "\u2605" else "\u2606")
+                            (minRating..maxRating).forEach { value ->
+                                append(if (value <= rating) "\u2605" else "\u2606")
                             }
                             append("  ")
                             append(rating)
-                            append("/10")
+                            append("/")
+                            append(maxRating)
                         },
                         fontSize = 34.sp,
                         fontWeight = FontWeight.Bold,

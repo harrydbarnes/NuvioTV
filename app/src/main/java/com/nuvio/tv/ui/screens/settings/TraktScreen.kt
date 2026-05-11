@@ -589,29 +589,31 @@ fun TraktScreen(
             suppressFirstKeyUp = false
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                (1..10).chunked(5).forEach { rowOptions ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        rowOptions.forEach { rating ->
-                            val selected = uiState.defaultRatingPromptValue == rating
-                            Button(
-                                onClick = {
-                                    viewModel.onDefaultRatingPromptValueSelected(rating)
-                                    showRatingDefaultDialog = false
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.colors(
-                                    containerColor = if (selected) NuvioColors.Primary else NuvioColors.BackgroundCard,
-                                    contentColor = if (selected) Color.Black else NuvioColors.TextPrimary
-                                )
-                            ) {
-                                Text(rating.toString())
+                (TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE..TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE)
+                    .chunked(5)
+                    .forEach { rowOptions ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowOptions.forEach { rating ->
+                                val selected = uiState.defaultRatingPromptValue == rating
+                                Button(
+                                    onClick = {
+                                        viewModel.onDefaultRatingPromptValueSelected(rating)
+                                        showRatingDefaultDialog = false
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = if (selected) NuvioColors.Primary else NuvioColors.BackgroundCard,
+                                        contentColor = if (selected) Color.Black else NuvioColors.TextPrimary
+                                    )
+                                ) {
+                                    Text(rating.toString())
+                                }
                             }
                         }
                     }
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
