@@ -48,6 +48,9 @@ data class TraktUiState(
     val deviceCodeExpiresAtMillis: Long? = null,
     val continueWatchingDaysCap: Int = TraktSettingsDataStore.DEFAULT_CONTINUE_WATCHING_DAYS_CAP,
     val showMetaComments: Boolean = TraktSettingsDataStore.DEFAULT_SHOW_META_COMMENTS,
+    val promptMovieRatings: Boolean = TraktSettingsDataStore.DEFAULT_PROMPT_MOVIE_RATINGS,
+    val promptEpisodeRatings: Boolean = TraktSettingsDataStore.DEFAULT_PROMPT_EPISODE_RATINGS,
+    val defaultRatingPromptValue: Int = TraktSettingsDataStore.DEFAULT_RATING_PROMPT_VALUE,
     val watchProgressSource: WatchProgressSource = TraktSettingsDataStore.DEFAULT_WATCH_PROGRESS_SOURCE,
     val librarySourceMode: LibrarySourceMode = TraktSettingsDataStore.DEFAULT_LIBRARY_SOURCE_MODE,
     val connectedStats: TraktProgressService.TraktCachedStats? = null,
@@ -109,6 +112,24 @@ class TraktViewModel @Inject constructor(
                     }
                 )
             }
+        }
+    }
+
+    fun onPromptMovieRatingsChanged(enabled: Boolean) {
+        viewModelScope.launch {
+            traktSettingsDataStore.setPromptMovieRatings(enabled)
+        }
+    }
+
+    fun onPromptEpisodeRatingsChanged(enabled: Boolean) {
+        viewModelScope.launch {
+            traktSettingsDataStore.setPromptEpisodeRatings(enabled)
+        }
+    }
+
+    fun onDefaultRatingPromptValueSelected(value: Int) {
+        viewModelScope.launch {
+            traktSettingsDataStore.setDefaultRatingPromptValue(value)
         }
     }
 
@@ -271,16 +292,34 @@ class TraktViewModel @Inject constructor(
     private fun observeSettings() {
         viewModelScope.launch {
             combine(
-                traktSettingsDataStore.continueWatchingDaysCap,
-                traktSettingsDataStore.showMetaComments,
-                traktSettingsDataStore.watchProgressSource,
-                traktSettingsDataStore.librarySourceMode
-            ) { daysCap, showMetaComments, watchProgressSource, librarySourceMode ->
+                combine(
+                    traktSettingsDataStore.continueWatchingDaysCap,
+                    traktSettingsDataStore.showMetaComments,
+                    traktSettingsDataStore.watchProgressSource,
+                    traktSettingsDataStore.librarySourceMode
+                ) { continueWatchingDaysCap, showMetaComments, watchProgressSource, librarySourceMode ->
+                    SettingsBaseSnapshot(
+                        continueWatchingDaysCap = continueWatchingDaysCap,
+                        showMetaComments = showMetaComments,
+                        watchProgressSource = watchProgressSource,
+                        librarySourceMode = librarySourceMode
+                    )
+                },
+                traktSettingsDataStore.promptMovieRatings,
+                traktSettingsDataStore.promptEpisodeRatings,
+                traktSettingsDataStore.defaultRatingPromptValue
+            ) { base,
+                promptMovieRatings,
+                promptEpisodeRatings,
+                defaultRatingPromptValue ->
                 SettingsSnapshot(
-                    continueWatchingDaysCap = daysCap,
-                    showMetaComments = showMetaComments,
-                    watchProgressSource = watchProgressSource,
-                    librarySourceMode = librarySourceMode
+                    continueWatchingDaysCap = base.continueWatchingDaysCap,
+                    showMetaComments = base.showMetaComments,
+                    watchProgressSource = base.watchProgressSource,
+                    librarySourceMode = base.librarySourceMode,
+                    promptMovieRatings = promptMovieRatings,
+                    promptEpisodeRatings = promptEpisodeRatings,
+                    defaultRatingPromptValue = defaultRatingPromptValue
                 )
             }.collectLatest { snapshot ->
                 _uiState.update {
@@ -288,18 +327,31 @@ class TraktViewModel @Inject constructor(
                         continueWatchingDaysCap = snapshot.continueWatchingDaysCap,
                         showMetaComments = snapshot.showMetaComments,
                         watchProgressSource = snapshot.watchProgressSource,
-                        librarySourceMode = snapshot.librarySourceMode
+                        librarySourceMode = snapshot.librarySourceMode,
+                        promptMovieRatings = snapshot.promptMovieRatings,
+                        promptEpisodeRatings = snapshot.promptEpisodeRatings,
+                        defaultRatingPromptValue = snapshot.defaultRatingPromptValue
                     )
                 }
             }
         }
     }
 
-    private data class SettingsSnapshot(
+    private data class SettingsBaseSnapshot(
         val continueWatchingDaysCap: Int,
         val showMetaComments: Boolean,
         val watchProgressSource: WatchProgressSource,
         val librarySourceMode: LibrarySourceMode
+    )
+
+    private data class SettingsSnapshot(
+        val continueWatchingDaysCap: Int,
+        val showMetaComments: Boolean,
+        val watchProgressSource: WatchProgressSource,
+        val librarySourceMode: LibrarySourceMode,
+        val promptMovieRatings: Boolean,
+        val promptEpisodeRatings: Boolean,
+        val defaultRatingPromptValue: Int
     )
 
     private fun applyAuthState(authState: TraktAuthState) {
