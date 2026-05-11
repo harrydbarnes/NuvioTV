@@ -292,25 +292,31 @@ class TraktViewModel @Inject constructor(
     private fun observeSettings() {
         viewModelScope.launch {
             combine(
-                traktSettingsDataStore.continueWatchingDaysCap,
-                traktSettingsDataStore.showMetaComments,
-                traktSettingsDataStore.watchProgressSource,
-                traktSettingsDataStore.librarySourceMode,
+                combine(
+                    traktSettingsDataStore.continueWatchingDaysCap,
+                    traktSettingsDataStore.showMetaComments,
+                    traktSettingsDataStore.watchProgressSource,
+                    traktSettingsDataStore.librarySourceMode
+                ) { continueWatchingDaysCap, showMetaComments, watchProgressSource, librarySourceMode ->
+                    SettingsBaseSnapshot(
+                        continueWatchingDaysCap = continueWatchingDaysCap,
+                        showMetaComments = showMetaComments,
+                        watchProgressSource = watchProgressSource,
+                        librarySourceMode = librarySourceMode
+                    )
+                },
                 traktSettingsDataStore.promptMovieRatings,
                 traktSettingsDataStore.promptEpisodeRatings,
                 traktSettingsDataStore.defaultRatingPromptValue
-            ) { continueWatchingDaysCap,
-                showMetaComments,
-                watchProgressSource,
-                librarySourceMode,
+            ) { base,
                 promptMovieRatings,
                 promptEpisodeRatings,
                 defaultRatingPromptValue ->
                 SettingsSnapshot(
-                    continueWatchingDaysCap = continueWatchingDaysCap,
-                    showMetaComments = showMetaComments,
-                    watchProgressSource = watchProgressSource,
-                    librarySourceMode = librarySourceMode,
+                    continueWatchingDaysCap = base.continueWatchingDaysCap,
+                    showMetaComments = base.showMetaComments,
+                    watchProgressSource = base.watchProgressSource,
+                    librarySourceMode = base.librarySourceMode,
                     promptMovieRatings = promptMovieRatings,
                     promptEpisodeRatings = promptEpisodeRatings,
                     defaultRatingPromptValue = defaultRatingPromptValue
@@ -330,6 +336,13 @@ class TraktViewModel @Inject constructor(
             }
         }
     }
+
+    private data class SettingsBaseSnapshot(
+        val continueWatchingDaysCap: Int,
+        val showMetaComments: Boolean,
+        val watchProgressSource: WatchProgressSource,
+        val librarySourceMode: LibrarySourceMode
+    )
 
     private data class SettingsSnapshot(
         val continueWatchingDaysCap: Int,
