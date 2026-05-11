@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.media3.common.Player
 import com.nuvio.tv.R
 import com.nuvio.tv.data.local.SubtitleStyleSettings
+import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.data.repository.TraktRatingItem
 import com.nuvio.tv.data.repository.TraktScrobbleItem
@@ -328,7 +329,10 @@ fun PlayerRuntimeController.maybeShowTraktRatingPrompt(): Boolean {
     if (!enabled) return false
 
     hasShownRatingPromptForCurrentItem = true
-    val initialRating = defaultRatingPromptValue.coerceIn(1, 10)
+    val initialRating = defaultRatingPromptValue.coerceIn(
+        TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE,
+        TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE
+    )
     _uiState.update {
         it.copy(
             showTraktRatingPrompt = true,
@@ -378,7 +382,10 @@ internal fun PlayerRuntimeController.dismissTraktRatingPrompt() {
 
 internal fun PlayerRuntimeController.submitTraktRatingPrompt() {
     val item = currentRatingItem ?: return
-    val rating = _uiState.value.traktRatingPromptRating.coerceIn(1, 10)
+    val rating = _uiState.value.traktRatingPromptRating.coerceIn(
+        TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE,
+        TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE
+    )
     _uiState.update {
         it.copy(
             traktRatingPromptSubmitting = true,
@@ -1251,7 +1258,10 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
         is PlayerEvent.OnSetTraktRatingPromptValue -> {
             _uiState.update {
                 it.copy(
-                    traktRatingPromptRating = event.rating.coerceIn(1, 10),
+                    traktRatingPromptRating = event.rating.coerceIn(
+                        TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE,
+                        TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE
+                    ),
                     traktRatingPromptSubmitted = false,
                     traktRatingPromptError = null
                 )

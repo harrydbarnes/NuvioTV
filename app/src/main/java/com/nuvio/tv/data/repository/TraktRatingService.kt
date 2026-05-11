@@ -1,6 +1,7 @@
 package com.nuvio.tv.data.repository
 
 import android.util.Log
+import com.nuvio.tv.data.local.TraktSettingsDataStore
 import com.nuvio.tv.data.remote.api.TraktApi
 import com.nuvio.tv.data.remote.dto.trakt.TraktIdsDto
 import com.nuvio.tv.data.remote.dto.trakt.TraktRatedEpisodeDto
@@ -67,7 +68,10 @@ class TraktRatingService @Inject constructor(
         if (!traktAuthService.getCurrentAuthState().isAuthenticated) return false
         if (!traktAuthService.hasRequiredCredentials()) return false
 
-        val clamped = rating.coerceIn(1, 10)
+        val clamped = rating.coerceIn(
+            TraktSettingsDataStore.MIN_RATING_PROMPT_VALUE,
+            TraktSettingsDataStore.MAX_RATING_PROMPT_VALUE
+        )
         val body = when (item) {
             is TraktRatingItem.Movie -> TraktRatingsAddRequestDto(
                 movies = listOf(TraktRatedMovieDto(ids = item.ids, rating = clamped))
