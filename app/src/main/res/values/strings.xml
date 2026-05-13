@@ -918,6 +918,7 @@
     <string name="tmdb_language_dialog_title">TMDB Language</string>
 
     <!-- TraktScreen -->
+    <string name="trakt_title">Trakt</string>
     <string name="trakt_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>
     <string name="trakt_connected_as">Connected as %1$s</string>
     <string name="trakt_account_login">Account Login</string>

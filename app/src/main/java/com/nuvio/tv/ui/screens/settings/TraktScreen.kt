@@ -132,152 +132,158 @@ fun TraktScreen(
         }
     }
     val traktLogoPainter = rememberRawSvgPainter(R.raw.trakt_tv_favicon)
+    val traktTitle = stringResource(R.string.trakt_title)
 
-    SettingsStandaloneScaffold(
-        title = "Trakt",
-        subtitle = stringResource(R.string.trakt_description)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp, vertical = 24.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        SettingsWorkspaceSurface(
+            modifier = Modifier.fillMaxSize()
         ) {
-            SettingsDetailHeader(
-                title = "Trakt",
-                subtitle = stringResource(R.string.trakt_description)
-            )
-
-            SettingsGroupCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                val expiresAt = uiState.deviceCodeExpiresAtMillis
-                val remaining = expiresAt?.let { (it - nowMillis).coerceAtLeast(0L) } ?: 0L
-                val contentListState = rememberLazyListState()
+                SettingsDetailHeader(
+                    title = traktTitle,
+                    subtitle = stringResource(R.string.trakt_description)
+                )
 
-                Box(modifier = Modifier.fillMaxSize()) {
-                    LazyColumn(
-                        state = contentListState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        item(key = "account_header") {
-                            TraktAccountHeader(
-                                logoPainter = traktLogoPainter,
-                                isConnected = uiState.mode == TraktConnectionMode.CONNECTED,
-                                username = uiState.username ?: stringResource(R.string.trakt_user_fallback)
-                            )
-                        }
+                SettingsGroupCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    val expiresAt = uiState.deviceCodeExpiresAtMillis
+                    val remaining = expiresAt?.let { (it - nowMillis).coerceAtLeast(0L) } ?: 0L
+                    val contentListState = rememberLazyListState()
 
-                        item(key = "account_state") {
-                            when (uiState.mode) {
-                                TraktConnectionMode.AWAITING_APPROVAL -> TraktAwaitingApprovalContent(
-                                    userCode = userCode,
-                                    qrBitmap = qrBitmap,
-                                    remaining = remaining,
-                                    onCancel = { viewModel.onCancelDeviceFlow() }
-                                )
-                                TraktConnectionMode.CONNECTED -> TraktConnectedContent(
-                                    tokenExpiresAtMillis = uiState.tokenExpiresAtMillis,
-                                    nowMillis = nowMillis,
-                                    onDisconnect = { showDisconnectConfirm = true },
-                                    focusRequester = primaryFocusRequester
-                                )
-                                else -> TraktLoggedOutContent(
-                                    credentialsConfigured = uiState.credentialsConfigured,
-                                    isLoading = uiState.isLoading,
-                                    onConnect = { viewModel.onConnectClick() },
-                                    focusRequester = primaryFocusRequester
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            state = contentListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            item(key = "account_header") {
+                                TraktAccountHeader(
+                                    logoPainter = traktLogoPainter,
+                                    isConnected = uiState.mode == TraktConnectionMode.CONNECTED,
+                                    username = uiState.username ?: stringResource(R.string.trakt_user_fallback)
                                 )
                             }
-                        }
 
-                        if (uiState.mode == TraktConnectionMode.CONNECTED) {
-                            item(key = "stats") {
-                                TraktConnectedStatsStrip(
-                                    stats = uiState.connectedStats,
-                                    isLoading = uiState.isStatsLoading
-                                )
+                            item(key = "account_state") {
+                                when (uiState.mode) {
+                                    TraktConnectionMode.AWAITING_APPROVAL -> TraktAwaitingApprovalContent(
+                                        userCode = userCode,
+                                        qrBitmap = qrBitmap,
+                                        remaining = remaining,
+                                        onCancel = { viewModel.onCancelDeviceFlow() }
+                                    )
+                                    TraktConnectionMode.CONNECTED -> TraktConnectedContent(
+                                        tokenExpiresAtMillis = uiState.tokenExpiresAtMillis,
+                                        nowMillis = nowMillis,
+                                        onDisconnect = { showDisconnectConfirm = true },
+                                        focusRequester = primaryFocusRequester
+                                    )
+                                    else -> TraktLoggedOutContent(
+                                        credentialsConfigured = uiState.credentialsConfigured,
+                                        isLoading = uiState.isLoading,
+                                        onConnect = { viewModel.onConnectClick() },
+                                        focusRequester = primaryFocusRequester
+                                    )
+                                }
                             }
-                            item(key = "library_source") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.trakt_library_source_title),
-                                    subtitle = stringResource(R.string.trakt_library_source_subtitle),
-                                    value = librarySourceFormatter(uiState.librarySourceMode),
-                                    onClick = { showLibrarySourceDialog = true }
-                                )
-                            }
-                            item(key = "watch_progress") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.trakt_watch_progress_title),
-                                    subtitle = stringResource(R.string.trakt_watch_progress_subtitle),
-                                    value = watchProgressFormatter(uiState.watchProgressSource),
-                                    onClick = { showWatchProgressDialog = true }
-                                )
-                            }
-                            item(key = "continue_watching") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.trakt_continue_watching_window),
-                                    subtitle = stringResource(R.string.trakt_continue_watching_subtitle),
-                                    value = cwWindowFormatter(uiState.continueWatchingDaysCap),
-                                    onClick = { showDaysCapDialog = true }
-                                )
-                            }
-                            item(key = "comments") {
-                                SettingsActionRow(
-                                    title = stringResource(R.string.trakt_comments_title),
-                                    subtitle = stringResource(R.string.trakt_comments_subtitle),
-                                    value = enabledFormatter(uiState.showMetaComments),
-                                    onClick = { showCommentsDialog = true }
-                                )
-                            }
-                        }
 
-                        if (uiState.mode != TraktConnectionMode.CONNECTED) {
-                            uiState.statusMessage?.let { status ->
-                                item(key = "status") {
+                            if (uiState.mode == TraktConnectionMode.CONNECTED) {
+                                item(key = "stats") {
+                                    TraktConnectedStatsStrip(
+                                        stats = uiState.connectedStats,
+                                        isLoading = uiState.isStatsLoading
+                                    )
+                                }
+                                item(key = "library_source") {
+                                    SettingsActionRow(
+                                        title = stringResource(R.string.trakt_library_source_title),
+                                        subtitle = stringResource(R.string.trakt_library_source_subtitle),
+                                        value = librarySourceFormatter(uiState.librarySourceMode),
+                                        onClick = { showLibrarySourceDialog = true }
+                                    )
+                                }
+                                item(key = "watch_progress") {
+                                    SettingsActionRow(
+                                        title = stringResource(R.string.trakt_watch_progress_title),
+                                        subtitle = stringResource(R.string.trakt_watch_progress_subtitle),
+                                        value = watchProgressFormatter(uiState.watchProgressSource),
+                                        onClick = { showWatchProgressDialog = true }
+                                    )
+                                }
+                                item(key = "continue_watching") {
+                                    SettingsActionRow(
+                                        title = stringResource(R.string.trakt_continue_watching_window),
+                                        subtitle = stringResource(R.string.trakt_continue_watching_subtitle),
+                                        value = cwWindowFormatter(uiState.continueWatchingDaysCap),
+                                        onClick = { showDaysCapDialog = true }
+                                    )
+                                }
+                                item(key = "comments") {
+                                    SettingsActionRow(
+                                        title = stringResource(R.string.trakt_comments_title),
+                                        subtitle = stringResource(R.string.trakt_comments_subtitle),
+                                        value = enabledFormatter(uiState.showMetaComments),
+                                        onClick = { showCommentsDialog = true }
+                                    )
+                                }
+                            }
+
+                            if (uiState.mode != TraktConnectionMode.CONNECTED) {
+                                uiState.statusMessage?.let { status ->
+                                    item(key = "status") {
+                                        Text(
+                                            text = status,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = NuvioColors.TextSecondary
+                                        )
+                                    }
+                                }
+                            }
+
+                            uiState.errorMessage?.let { error ->
+                                item(key = "error") {
                                     Text(
-                                        text = status,
+                                        text = error,
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = NuvioColors.TextSecondary
+                                        color = Color(0xFFFF6E6E)
                                     )
                                 }
                             }
                         }
+                        SettingsVerticalScrollIndicators(state = contentListState)
+                    }
+                }
 
-                        uiState.errorMessage?.let { error ->
-                            item(key = "error") {
-                                Text(
-                                    text = error,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFFFF6E6E)
-                                )
-                            }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (uiState.mode == TraktConnectionMode.AWAITING_APPROVAL) {
+                        Button(
+                            onClick = { viewModel.onRetryPolling() },
+                            enabled = !uiState.isLoading,
+                            modifier = Modifier.focusRequester(primaryFocusRequester)
+                        ) {
+                            Text(stringResource(R.string.trakt_retry))
                         }
                     }
-                    SettingsVerticalScrollIndicators(state = contentListState)
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (uiState.mode == TraktConnectionMode.AWAITING_APPROVAL) {
                     Button(
-                        onClick = { viewModel.onRetryPolling() },
-                        enabled = !uiState.isLoading,
-                        modifier = Modifier.focusRequester(primaryFocusRequester)
+                        onClick = onBackPress,
+                        colors = ButtonDefaults.colors(
+                            containerColor = NuvioColors.BackgroundCard,
+                            contentColor = NuvioColors.TextPrimary
+                        )
                     ) {
-                        Text(stringResource(R.string.trakt_retry))
+                        Text(stringResource(R.string.trakt_back))
                     }
-                }
-                Button(
-                    onClick = onBackPress,
-                    colors = ButtonDefaults.colors(
-                        containerColor = NuvioColors.BackgroundCard,
-                        contentColor = NuvioColors.TextPrimary
-                    )
-                ) {
-                    Text(stringResource(R.string.trakt_back))
                 }
             }
         }
