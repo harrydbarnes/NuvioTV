@@ -151,6 +151,12 @@
     <string name="cw_min_left">%1$dm left</string>
     <string name="cw_almost_done">Almost done</string>
     <string name="cw_airs_date">Airs %1$s</string>
+    <string name="cw_airs_today">Airs today</string>
+    <string name="cw_airs_tomorrow">Airs tomorrow</string>
+    <plurals name="cw_airs_in_days">
+        <item quantity="one">Airs in %d day</item>
+        <item quantity="other">Airs in %d days</item>
+    </plurals>
     <string name="cw_action_go_to_details">Go to details</string>
     <string name="cw_action_start_from_beginning">Start from beginning</string>
     <string name="cw_action_remove">Remove</string>
@@ -709,6 +715,8 @@
     <string name="autoplay_next_episode_sub">Start next episode automatically when prompt appears.</string>
     <string name="autoplay_prefer_binge_group">Prefer Binge Group (Next Episode)</string>
     <string name="autoplay_prefer_binge_group_sub">Try the same source profile first (same addon/quality group) before normal auto-play rules.</string>
+    <string name="autoplay_reuse_binge_group">Reuse Binge Group</string>
+    <string name="autoplay_reuse_binge_group_sub">Remember and reuse the last binge group across sessions (Continue Watching, Details, etc.).</string>
     <string name="autoplay_threshold_pct">Percentage</string>
     <string name="autoplay_threshold_min">Minutes before end</string>
     <string name="autoplay_threshold_mode">Next Episode Threshold Mode</string>
@@ -913,6 +921,7 @@
     <string name="debrid_prepare_instant_playback">Prepare links</string>
     <string name="debrid_prepare_instant_playback_description">Resolve the first sources before playback starts.</string>
     <string name="debrid_prepare_stream_count">Sources to prepare</string>
+    <string name="debrid_prepare_stream_count_warning">Use a lower count when possible. Debrid services may rate-limit how many links can be resolved in a time period. Opening a movie or episode can count toward those limits even if you do not press Watch, because the links are prepared ahead of time.</string>
     <string name="debrid_prepare_count_one">1 source</string>
     <string name="debrid_prepare_count_many">%1$d sources</string>
     <string name="debrid_stream_max_results_title">Max results</string>
