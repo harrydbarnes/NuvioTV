@@ -6,6 +6,7 @@ import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.data.mapper.toDomain
 import com.nuvio.tv.data.remote.api.AddonApi
+import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.AddonResource
@@ -30,7 +31,8 @@ import javax.inject.Singleton
 class MetaRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: AddonApi,
-    private val addonRepository: AddonRepository
+    private val addonRepository: AddonRepository,
+    private val tmdbService: TmdbService
 ) : MetaRepository {
     companion object {
         private const val TAG = "MetaRepository"
@@ -81,6 +83,7 @@ class MetaRepositoryImpl @Inject constructor(
                         is NetworkResult.Success -> {
                             val metaDto = result.data.meta ?: return@async null
                             val meta = metaDto.toDomain(context.getString(R.string.episodes_episode))
+                            cacheTmdbImdbMapping(meta)
                             metaCache[cacheKey] = meta
                             meta
                         }
@@ -164,6 +167,7 @@ class MetaRepositoryImpl @Inject constructor(
                         if (metaDto != null) {
                             val episodeLabel = context.getString(R.string.episodes_episode)
                             val meta = metaDto.toDomain(episodeLabel)
+                            cacheTmdbImdbMapping(meta)
                             addonMetaCache[cacheKey] = meta
                             metaCache[cacheKey] = meta
                             emit(NetworkResult.Success(meta))
@@ -204,6 +208,7 @@ class MetaRepositoryImpl @Inject constructor(
                                 val metaDto = result.data.meta
                                 if (metaDto != null) {
                                     val meta = metaDto.toDomain(context.getString(R.string.episodes_episode))
+                                    cacheTmdbImdbMapping(meta)
                                     addonMetaCache[cacheKey] = meta
                                     metaCache[cacheKey] = meta
                                     Log.d(TAG, "Meta fetch success addonId=${addon.id} type=$candidateType id=$id")
@@ -281,6 +286,7 @@ class MetaRepositoryImpl @Inject constructor(
                         is NetworkResult.Success -> {
                             val metaDto = result.data.meta ?: return@async null
                             val meta = metaDto.toDomain(context.getString(R.string.episodes_episode))
+                            cacheTmdbImdbMapping(meta)
                             primaryAddonMetaCache[cacheKey] = meta
                             metaCache[cacheKey] = meta
                             meta
@@ -314,6 +320,17 @@ class MetaRepositoryImpl @Inject constructor(
         val encodedType = encodePathSegment(type)
         val encodedId = encodePathSegment(id)
         return "$basePath/meta/$encodedType/$encodedId.json$baseQuery"
+    }
+
+    private fun cacheTmdbImdbMapping(meta: Meta) {
+        val imdbId = meta.imdbId?.takeIf { it.isNotBlank() } ?: return
+        val tmdbId = meta.id
+            .takeIf { it.startsWith("tmdb:", ignoreCase = true) }
+            ?.substringAfter(":")
+            ?.substringBefore(":")
+            ?.toIntOrNull()
+            ?: return
+        tmdbService.preCacheMapping(imdbId, tmdbId)
     }
 
     private fun Addon.supportsMetaType(type: String): Boolean {

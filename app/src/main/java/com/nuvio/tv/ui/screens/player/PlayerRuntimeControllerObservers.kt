@@ -5,6 +5,7 @@ import com.nuvio.tv.core.player.OpenSubtitlesHasher
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.data.local.FrameRateMatchingMode
+import com.nuvio.tv.core.tmdb.AddonRequestIdResolver
 import com.nuvio.tv.domain.model.Subtitle
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
@@ -82,10 +83,22 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
         }
     }
 
+    val requestType = request.type
+    val requestId = AddonRequestIdResolver.resolve(
+        tmdbService = tmdbService,
+        mediaType = requestType,
+        id = request.id
+    ) ?: request.id
+    val requestVideoId = AddonRequestIdResolver.resolve(
+        tmdbService = tmdbService,
+        mediaType = requestType,
+        id = request.videoId
+    )
+
     return subtitleRepository.getSubtitles(
         type = request.type,
-        id = request.id,
-        videoId = request.videoId,
+        id = requestId,
+        videoId = requestVideoId,
         videoHash = currentVideoHash,
         videoSize = currentVideoSize,
         filename = currentFilename,

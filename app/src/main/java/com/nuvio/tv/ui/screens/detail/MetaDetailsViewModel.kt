@@ -63,6 +63,7 @@ import android.net.Uri
 import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
 import com.nuvio.tv.core.build.AppFeaturePolicy
+import com.nuvio.tv.core.tmdb.AddonRequestIdResolver
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
 import javax.inject.Inject
@@ -292,7 +293,14 @@ class MetaDetailsViewModel @Inject constructor(
         } else {
             targetMeta.id
         }?.takeIf { it.isNotBlank() } ?: return
-        directDebridStreamSource.preloadStreams(type, videoId)
+        viewModelScope.launch {
+            val requestVideoId = AddonRequestIdResolver.resolve(
+                tmdbService = tmdbService,
+                mediaType = type,
+                id = videoId
+            ) ?: videoId
+            directDebridStreamSource.preloadStreams(type, requestVideoId)
+        }
     }
 
     private fun observeTrailerAutoplaySettings() {

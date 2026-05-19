@@ -6,6 +6,7 @@ import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
+import com.nuvio.tv.core.tmdb.AddonRequestIdResolver
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import com.nuvio.tv.data.local.StreamAutoPlaySource
@@ -117,12 +118,17 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
         val installedAddons = addonRepository.getInstalledAddons().first()
         val installedAddonOrder = installedAddons.map { it.displayName }
         val installedAddonNames = installedAddonOrder.toSet()
+        val requestVid = AddonRequestIdResolver.resolve(
+            tmdbService = tmdbService,
+            mediaType = type,
+            id = vid
+        ) ?: vid
         var debridPreparationLaunched = false
-        updateSourceChipsForFetchStart(type, vid, installedAddons)
+        updateSourceChipsForFetchStart(type, requestVid, installedAddons)
 
         streamRepository.getStreamsFromAllAddons(
             type = type,
-            videoId = vid,
+            videoId = requestVid,
             season = seasonArg,
             episode = episodeArg
         ).collect { result ->
@@ -786,10 +792,15 @@ internal fun PlayerRuntimeController.loadStreamsForEpisode(video: Video, forceRe
         val installedAddonOrder = installedAddons.map { it.displayName }
         val installedAddonNames = installedAddonOrder.toSet()
         var debridPreparationLaunched = false
+        val requestVideoId = AddonRequestIdResolver.resolve(
+            tmdbService = tmdbService,
+            mediaType = type,
+            id = video.id
+        ) ?: video.id
 
         streamRepository.getStreamsFromAllAddons(
             type = type,
-            videoId = video.id,
+            videoId = requestVideoId,
             season = video.season,
             episode = video.episode
         ).collect { result ->
@@ -1299,11 +1310,16 @@ internal fun PlayerRuntimeController.playNextEpisode(userInitiated: Boolean = fa
             }
 
             val timeoutSeconds = playerSettings.streamAutoPlayTimeoutSeconds
+            val requestVideoId = AddonRequestIdResolver.resolve(
+                tmdbService = tmdbService,
+                mediaType = type,
+                id = nextVideo.id
+            ) ?: nextVideo.id
 
             val innerJob = launch {
                 streamRepository.getStreamsFromAllAddons(
                     type = type,
-                    videoId = nextVideo.id,
+                    videoId = requestVideoId,
                     season = nextVideo.season,
                     episode = nextVideo.episode
                 ).collect { result ->

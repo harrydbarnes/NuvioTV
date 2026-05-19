@@ -12,6 +12,8 @@ import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.debrid.DirectDebridStreamSource
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.tmdb.AddonRequestIdResolver
+import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
@@ -56,6 +58,7 @@ class StreamScreenViewModel @Inject constructor(
     private val addonRepository: AddonRepository,
     private val pluginManager: PluginManager,
     private val metaRepository: MetaRepository,
+    private val tmdbService: TmdbService,
     private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val streamLinkCacheDataStore: StreamLinkCacheDataStore,
     private val bingeGroupCacheDataStore: BingeGroupCacheDataStore,
@@ -293,6 +296,11 @@ class StreamScreenViewModel @Inject constructor(
 
             val installedAddons = addonRepository.getInstalledAddons().first()
             val installedAddonOrder = installedAddons.map { it.displayName }
+            val addonRequestVideoId = AddonRequestIdResolver.resolve(
+                tmdbService = tmdbService,
+                mediaType = contentType,
+                id = videoId
+            ) ?: videoId
             val directDebridSourceNames = directDebridStreamSource.sourceNames()
             val directDebridAvailable = directDebridSourceNames.isNotEmpty()
             val persistedBingeGroup = if (playerSettings.streamAutoPlayPreferBingeGroupForNextEpisode &&
@@ -390,7 +398,7 @@ class StreamScreenViewModel @Inject constructor(
                 }
             }
 
-            updateSourceChipsForFetchStart(installedAddons, directDebridSourceNames)
+            updateSourceChipsForFetchStart(installedAddons, directDebridSourceNames, addonRequestVideoId)
 
             var lastSuccessData: List<AddonStreams>? = null
             var autoSelectTriggered = false
@@ -442,7 +450,7 @@ class StreamScreenViewModel @Inject constructor(
             val streamLoadInner = viewModelScope.launch {
                 streamRepository.getStreamsFromAllAddons(
                     type = contentType,
-                    videoId = videoId,
+                    videoId = addonRequestVideoId,
                     season = season,
                     episode = episode
                 ).collect { result ->
@@ -563,10 +571,11 @@ class StreamScreenViewModel @Inject constructor(
 
     private suspend fun updateSourceChipsForFetchStart(
         installedAddons: List<com.nuvio.tv.domain.model.Addon>,
-        directDebridSourceNames: List<String>
+        directDebridSourceNames: List<String>,
+        requestVideoId: String
     ) {
         val addonNames = installedAddons
-            .filter { it.supportsStreamResourceForChip(contentType) }
+            .filter { it.supportsStreamResourceForChip(contentType, requestVideoId) }
             .map { it.displayName }
 
         val pluginNames = try {
@@ -678,14 +687,14 @@ class StreamScreenViewModel @Inject constructor(
         }
     }
 
-    private fun com.nuvio.tv.domain.model.Addon.supportsStreamResourceForChip(type: String): Boolean {
+    private fun com.nuvio.tv.domain.model.Addon.supportsStreamResourceForChip(type: String, requestVideoId: String): Boolean {
         return resources.any { resource ->
             resource.name == "stream" &&
                 (resource.types.isEmpty() || resource.types.any { it.equals(type, ignoreCase = true) }) &&
                 run {
                     val prefixes = resource.idPrefixes?.takeIf { it.isNotEmpty() }
                         ?: idPrefixes.takeIf { it.isNotEmpty() }
-                    prefixes == null || prefixes.any { prefix -> videoId.startsWith(prefix) }
+                    prefixes == null || prefixes.any { prefix -> requestVideoId.startsWith(prefix) }
                 }
         }
     }
