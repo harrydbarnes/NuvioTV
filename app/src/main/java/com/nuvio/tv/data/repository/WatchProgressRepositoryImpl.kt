@@ -65,7 +65,7 @@ class WatchProgressRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "WatchProgressRepo"
         private const val OPTIMISTIC_NEXT_UP_SEED_WINDOW_MS = 3 * 60_000L
-        private const val NUVIO_SYNC_PERIODIC_INTERVAL_MS = 5 * 60_000L
+        private const val NUVIO_SYNC_PERIODIC_INTERVAL_MS = 30 * 60_000L
     }
 
     private data class EpisodeMetadata(
@@ -707,7 +707,14 @@ class WatchProgressRepositoryImpl @Inject constructor(
         // Capture profile ID now so async operations target the correct profile.
         val profileId = profileManager.activeProfileId.value
         if (shouldUseTraktProgress()) {
-            traktProgressService.applyOptimisticProgress(progress)
+            // For periodic in-playback saves (syncRemote=false), only update the
+            // local optimistic state without triggering a full remote refresh cycle.
+            // This prevents Trakt API calls every 10s which cause CPU load and stutters.
+            if (syncRemote) {
+                traktProgressService.applyOptimisticProgress(progress)
+            } else {
+                traktProgressService.updateOptimisticProgressQuietly(progress)
+            }
             watchProgressPreferences.saveProgress(progress)
             if (progress.isCompleted()) {
                 val watchedItem = progress.toWatchedItem()
