@@ -51,8 +51,7 @@ class TrailerService(
         inAppYouTubeExtractor = inAppYouTubeExtractor,
         tmdbSettingsDataStore = tmdbSettingsDataStore,
         tmdbService = tmdbService,
-        clock = Clock.systemUTC(),
-        context = context
+        clock = Clock.systemUTC()
     )
 
     constructor(
