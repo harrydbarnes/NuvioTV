@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
 import okhttp3.Headers
@@ -234,56 +235,85 @@ class InAppYouTubeExtractor @Inject constructor() {
         Log.d(TAG, "Watch config invalidated")
     }
 
-    suspend fun extractPlaybackSource(youtubeUrl: String): TrailerPlaybackSource? = withContext(Dispatchers.IO) {
-        if (youtubeUrl.isBlank()) return@withContext null
+    suspend fun extractPlaybackSource(youtubeUrl: String): TrailerPlaybackSource? {
+        return extractPlaybackSourceWithDiagnostics(youtubeUrl).source
+    }
 
-        Log.d(TAG, "Starting Kotlin extraction for ${summarizeUrl(youtubeUrl)}")
-        var source: TrailerPlaybackSource? = null
-        try {
-            source = withTimeout(EXTRACTOR_TIMEOUT_MS) {
-                extractPlaybackSourceInternal(youtubeUrl, forceRefreshConfig = false)
+    suspend fun extractPlaybackSourceWithDiagnostics(youtubeUrl: String): YouTubeExtractionResult =
+        withContext(Dispatchers.IO) {
+            val diagnostics = ExtractionDiagnostics()
+            if (youtubeUrl.isBlank()) {
+                diagnostics.failureCode = "YT_INPUT_BLANK"
+                return@withContext YouTubeExtractionResult(null, diagnostics.build(null))
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (error: Exception) {
-            Log.w(TAG, "Kotlin extractor failed for $youtubeUrl: ${error.message}")
-        }
 
-        // Retry with fresh config if first attempt returned nothing
-        if (source == null) {
-            Log.d(TAG, "First attempt failed, retrying with fresh watch config...")
+            Log.d(TAG, "Starting Kotlin extraction for ${summarizeUrl(youtubeUrl)}")
+            var source: TrailerPlaybackSource? = null
             try {
                 source = withTimeout(EXTRACTOR_TIMEOUT_MS) {
-                    extractPlaybackSourceInternal(youtubeUrl, forceRefreshConfig = true)
+                    extractPlaybackSourceInternal(youtubeUrl, forceRefreshConfig = false, diagnostics = diagnostics)
                 }
+            } catch (e: TimeoutCancellationException) {
+                diagnostics.failureCode = "YT_EXTRACTOR_TIMEOUT"
+                diagnostics.add("firstAttempt=timeout")
+                Log.w(TAG, "Kotlin extractor timed out for ${summarizeUrl(youtubeUrl)}")
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (error: Exception) {
-                Log.w(TAG, "Kotlin extractor retry failed for $youtubeUrl: ${error.message}")
+                diagnostics.failureCode = "YT_EXTRACTOR_EXCEPTION"
+                diagnostics.add("firstAttempt=${safeError(error)}")
+                Log.w(TAG, "Kotlin extractor failed for ${summarizeUrl(youtubeUrl)}: ${error.message}")
             }
-        }
 
-        if (source == null) {
-            Log.w(TAG, "Kotlin extraction returned no playable source for ${summarizeUrl(youtubeUrl)}")
-        } else {
-            Log.d(
-                TAG,
-                "Kotlin extraction success for ${summarizeUrl(youtubeUrl)} " +
-                    "(video=${summarizeUrl(source.videoUrl)}, audioPresent=${!source.audioUrl.isNullOrBlank()})"
-            )
-        }
+            // Retry with fresh config if first attempt returned nothing.
+            if (source == null) {
+                Log.d(TAG, "First attempt failed, retrying with fresh watch config...")
+                try {
+                    source = withTimeout(EXTRACTOR_TIMEOUT_MS) {
+                        extractPlaybackSourceInternal(youtubeUrl, forceRefreshConfig = true, diagnostics = diagnostics)
+                    }
+                } catch (e: TimeoutCancellationException) {
+                    diagnostics.failureCode = "YT_EXTRACTOR_TIMEOUT"
+                    diagnostics.add("retryAttempt=timeout")
+                    Log.w(TAG, "Kotlin extractor retry timed out for ${summarizeUrl(youtubeUrl)}")
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (error: Exception) {
+                    diagnostics.failureCode = "YT_EXTRACTOR_EXCEPTION"
+                    diagnostics.add("retryAttempt=${safeError(error)}")
+                    Log.w(TAG, "Kotlin extractor retry failed for ${summarizeUrl(youtubeUrl)}: ${error.message}")
+                }
+            }
 
-        source
-    }
+            if (source == null) {
+                Log.w(TAG, "Kotlin extraction returned no playable source for ${summarizeUrl(youtubeUrl)}")
+            } else {
+                Log.d(
+                    TAG,
+                    "Kotlin extraction success for ${summarizeUrl(youtubeUrl)} " +
+                        "(video=${summarizeUrl(source.videoUrl)}, audioPresent=${!source.audioUrl.isNullOrBlank()})"
+                )
+            }
+
+            YouTubeExtractionResult(source, diagnostics.build(source))
+        }
 
     private suspend fun extractPlaybackSourceInternal(
         youtubeUrl: String,
-        forceRefreshConfig: Boolean
+        forceRefreshConfig: Boolean,
+        diagnostics: ExtractionDiagnostics
     ): TrailerPlaybackSource? {
-        val videoId = extractVideoId(youtubeUrl) ?: return null
+        val videoId = extractVideoId(youtubeUrl) ?: run {
+            diagnostics.failureCode = "YT_ID_INVALID"
+            diagnostics.add("youtubeId=invalid")
+            return null
+        }
+        diagnostics.add("youtubeId=***${videoId.takeLast(4)}")
+        diagnostics.add("forceRefreshConfig=$forceRefreshConfig")
 
         // Use cached config instead of fetching watch page every time
         val config = ensureWatchConfig(forceRefresh = forceRefreshConfig)
+        diagnostics.add("watchConfig=ok visitor=${!config.visitorData.isNullOrBlank()}")
         Log.d(TAG, "Using config: apiKey=${config.apiKey.take(10)}... visitor=${!config.visitorData.isNullOrBlank()}")
 
         val progressive = mutableListOf<StreamCandidate>()
@@ -308,14 +338,21 @@ class InAppYouTubeExtractor @Inject constructor() {
                 val status = playabilityStatus?.stringValue("status")
                 if (status == "LOGIN_REQUIRED") {
                     loginRequiredCount++
+                    diagnostics.add("client=${client.key} status=LOGIN_REQUIRED")
                     Log.w(TAG, "Client ${client.key}: LOGIN_REQUIRED (visitor may be stale)")
                     continue
                 }
                 if (status != null && status != "OK") {
+                    diagnostics.add("client=${client.key} status=$status")
                     continue
                 }
 
-                val streamingData = playerResponse.mapValue("streamingData") ?: continue
+                val streamingData = playerResponse.mapValue("streamingData")
+                if (streamingData == null) {
+                    diagnostics.add("client=${client.key} streamingData=missing")
+                    continue
+                }
+                diagnostics.add("client=${client.key} status=${status ?: "unknown"} streamingData=present")
                 val hlsManifestUrl = streamingData.stringValue("hlsManifestUrl")
                 if (!hlsManifestUrl.isNullOrBlank()) {
                     manifestUrls += Triple(client.key, client.priority, hlsManifestUrl)
@@ -393,6 +430,7 @@ class InAppYouTubeExtractor @Inject constructor() {
                     }
                 }
             } catch (error: Exception) {
+                diagnostics.add("client=${client.key} error=${safeError(error)}")
                 if (BuildConfig.DEBUG) {
                     Log.w(TAG, "Client ${client.key} failed: ${error.message}")
                 }
@@ -403,11 +441,18 @@ class InAppYouTubeExtractor @Inject constructor() {
         // If all clients returned LOGIN_REQUIRED, invalidate config for next attempt
         if (loginRequiredCount == CLIENTS.size) {
             Log.w(TAG, "All ${CLIENTS.size} clients returned LOGIN_REQUIRED, invalidating config")
+            diagnostics.failureCode = "YT_LOGIN_REQUIRED"
+            diagnostics.add("allClientsLoginRequired=true")
             invalidateConfig()
             return null
         }
 
+        diagnostics.add(
+            "candidates=progressive:${progressive.size},adaptiveVideo:${adaptiveVideo.size}," +
+                "adaptiveAudio:${adaptiveAudio.size},hls:${manifestUrls.size}"
+        )
         if (manifestUrls.isEmpty() && progressive.isEmpty() && adaptiveVideo.isEmpty() && adaptiveAudio.isEmpty()) {
+            diagnostics.failureCode = "YT_NO_STREAMING_CANDIDATES"
             return null
         }
 
@@ -431,6 +476,7 @@ class InAppYouTubeExtractor @Inject constructor() {
                     bestManifest = candidate
                 }
             } catch (error: Exception) {
+                diagnostics.add("hlsManifest client=$clientKey error=${safeError(error)}")
                 if (BuildConfig.DEBUG) {
                     Log.w(TAG, "Manifest parse failed: ${error.message}")
                 }
@@ -443,24 +489,36 @@ class InAppYouTubeExtractor @Inject constructor() {
 
         // Try adaptive video + audio first (best quality, separate streams)
         kotlinx.coroutines.yield()
-        val resolvedVideo = bestVideo?.url?.let { resolveReachableUrl(it) }
-        val resolvedAudio = if (resolvedVideo != null) bestAudio?.url?.let { resolveReachableUrl(it) } else null
+        val resolvedVideo = bestVideo?.url?.let {
+            resolveReachableUrl(it, diagnostics, label = "adaptiveVideo:${bestVideo.client}")
+        }
+        val resolvedAudio = if (resolvedVideo != null) {
+            bestAudio?.url?.let { resolveReachableUrl(it, diagnostics, label = "adaptiveAudio:${bestAudio.client}") }
+        } else {
+            null
+        }
 
         if (resolvedVideo != null) {
+            diagnostics.add("selected=adaptive audio=${resolvedAudio != null}")
             return TrailerPlaybackSource(videoUrl = resolvedVideo, audioUrl = resolvedAudio)
         }
 
         // Adaptive failed (403) — fall back to HLS manifest (1080p, always works for COPPA/kids content)
         if (bestManifest != null) {
+            diagnostics.add("selected=hls client=${bestManifest.client} height=${bestManifest.height}")
             return TrailerPlaybackSource(videoUrl = bestManifest.manifestUrl, audioUrl = null)
         }
 
         // No HLS available — try progressive (combined video+audio, usually low quality)
-        val resolvedProgressive = bestProgressive?.url?.let { resolveReachableUrl(it) }
+        val resolvedProgressive = bestProgressive?.url?.let {
+            resolveReachableUrl(it, diagnostics, label = "progressive:${bestProgressive.client}")
+        }
         if (resolvedProgressive != null) {
+            diagnostics.add("selected=progressive client=${bestProgressive.client}")
             return TrailerPlaybackSource(videoUrl = resolvedProgressive, audioUrl = null)
         }
 
+        diagnostics.failureCode = "YT_PROBE_FAILED"
         return null
     }
 
@@ -711,12 +769,25 @@ class InAppYouTubeExtractor @Inject constructor() {
      * Probes CDN nodes for the given googlevideo URL and returns the first reachable one.
      * Returns null if no CDN node responds successfully (all return 403/timeout).
      */
-    private suspend fun resolveReachableUrl(url: String): String? {
-        if (!url.contains("googlevideo.com")) return url
+    private suspend fun resolveReachableUrl(
+        url: String,
+        diagnostics: ExtractionDiagnostics,
+        label: String
+    ): String? {
+        if (!url.contains("googlevideo.com")) {
+            diagnostics.add("probe $label=skipped non-googlevideo")
+            return url
+        }
         val uri = Uri.parse(url)
-        val mnParam = uri.getQueryParameter("mn") ?: return url
+        val mnParam = uri.getQueryParameter("mn") ?: run {
+            diagnostics.add("probe $label=skipped no-mn")
+            return url
+        }
         val servers = mnParam.split(",").map { it.trim() }.filter { it.isNotBlank() }
-        if (servers.size < 2) return url
+        if (servers.size < 2) {
+            diagnostics.add("probe $label=skipped single-cdn")
+            return url
+        }
 
         val candidates = mutableListOf(url)
         for (server in servers) {
@@ -734,19 +805,24 @@ class InAppYouTubeExtractor @Inject constructor() {
 
         if (candidates.size == 1) {
             // Single candidate — verify it's reachable
-            return if (isUrlReachable(candidates[0])) candidates[0] else null
+            val result = probeUrlReachability(candidates[0])
+            diagnostics.add("probe $label=${result.status}")
+            return if (result.reachable) candidates[0] else null
         }
 
+        diagnostics.add("probe $label candidates=${candidates.size}")
         val result = CompletableDeferred<String>()
         val probeScope = CoroutineScope(Dispatchers.IO)
         candidates.forEach { candidate ->
             probeScope.launch {
-                val reachable = isUrlReachable(candidate)
-                if (reachable) result.complete(candidate)
+                val probe = probeUrlReachability(candidate)
+                if (probe.reachable) result.complete(candidate)
             }
         }
         return try {
-            withTimeoutOrNull(2_000L) { result.await() }
+            val reachableUrl = withTimeoutOrNull(2_000L) { result.await() }
+            diagnostics.add("probe $label=${if (reachableUrl != null) "reachable" else "timeout-or-blocked"}")
+            reachableUrl
         } finally {
             probeScope.cancel()
         }
@@ -762,7 +838,7 @@ class InAppYouTubeExtractor @Inject constructor() {
             .build()
     }
 
-    private fun isUrlReachable(url: String): Boolean {
+    private fun probeUrlReachability(url: String): ProbeResult {
         return runCatching {
             val request = Request.Builder()
                 .url(url)
@@ -771,9 +847,17 @@ class InAppYouTubeExtractor @Inject constructor() {
                 .get()
                 .build()
             probeClient.newCall(request).execute().use { response ->
-                response.code == 200 || response.code == 206
+                ProbeResult(
+                    reachable = response.code == 200 || response.code == 206,
+                    status = "http-${response.code}"
+                )
             }
-        }.getOrDefault(false)
+        }.getOrElse { error ->
+            ProbeResult(
+                reachable = false,
+                status = safeError(error)
+            )
+        }
     }
 
     private fun absolutizeUrl(baseUrl: String, maybeRelative: String): String {
@@ -840,6 +924,33 @@ private data class RequestResponse(
     val url: String,
     val body: String
 )
+
+private data class ProbeResult(
+    val reachable: Boolean,
+    val status: String
+)
+
+private class ExtractionDiagnostics {
+    private val lines = mutableListOf<String>()
+    var failureCode: String = "YT_EXTRACTOR_NO_SOURCE"
+
+    fun add(line: String) {
+        if (line.isNotBlank()) {
+            lines += line
+        }
+    }
+
+    fun build(source: TrailerPlaybackSource?): TrailerPlaybackDiagnostic {
+        return TrailerPlaybackDiagnostic(
+            code = if (source != null) "YT_OK" else failureCode,
+            details = lines.takeLast(14)
+        )
+    }
+}
+
+private fun safeError(error: Throwable): String {
+    return error.javaClass.simpleName.ifBlank { "Exception" }
+}
 
 private fun Map<*, *>.mapValue(key: String): Map<*, *>? {
     return this[key] as? Map<*, *>

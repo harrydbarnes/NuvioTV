@@ -2550,11 +2550,12 @@ class MetaDetailsViewModel @Inject constructor(
             val year = meta?.releaseInfo?.let { info ->
                 if (info.isBlank()) null else Regex("""\b(19|20)\d{2}\b""").find(info)?.value
             }
-            val source = trailerService.getTrailerPlaybackSourceFromYouTubeUrl(
+            val resolution = trailerService.getTrailerPlaybackResolutionFromYouTubeUrl(
                 youtubeUrl = "https://www.youtube.com/watch?v=$ytId",
                 title = meta?.name,
                 year = year
             )
+            val source = resolution.source
 
             _uiState.update { state ->
                 if (state.selectedSharedTrailer?.ytId != trailer.ytId) {
@@ -2566,7 +2567,9 @@ class MetaDetailsViewModel @Inject constructor(
                         sharedTrailerUrl = source?.videoUrl,
                         sharedTrailerAudioUrl = source?.audioUrl,
                         sharedTrailerErrorMessage = if (source == null) {
-                            localizedContext.getString(R.string.detail_trailer_error)
+                            resolution.diagnostic.toDisplayMessage(
+                                localizedContext.getString(R.string.detail_trailer_error)
+                            )
                         } else {
                             null
                         }

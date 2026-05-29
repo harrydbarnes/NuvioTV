@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -51,6 +52,7 @@ fun TrailerPlayer(
     seekRequestToken: Int = 0,
     seekDeltaMs: Long = 0L,
     onProgressChanged: (positionMs: Long, durationMs: Long) -> Unit = { _, _ -> },
+    onPlaybackError: (String) -> Unit = {},
     onRemoteKey: (keyCode: Int, action: Int, repeatCount: Int) -> Boolean = { _, _, _ -> false },
     cropToFill: Boolean = false,
     overscanZoom: Float = 1f,
@@ -68,6 +70,7 @@ fun TrailerPlayer(
     val currentOnEnded by rememberUpdatedState(onEnded)
     val currentOnFirstFrameRendered by rememberUpdatedState(onFirstFrameRendered)
     val currentOnProgressChanged by rememberUpdatedState(onProgressChanged)
+    val currentOnPlaybackError by rememberUpdatedState(onPlaybackError)
     val currentOnRemoteKey by rememberUpdatedState(onRemoteKey)
     val zoomScale = if (cropToFill) overscanZoom.coerceAtLeast(1f) else 1f
     var hasRenderedFirstFrame by remember(trailerUrl) { mutableStateOf(false) }
@@ -179,6 +182,10 @@ fun TrailerPlayer(
                 hasRenderedFirstFrame = true
                 currentOnFirstFrameRendered()
             }
+
+            override fun onPlayerError(error: PlaybackException) {
+                currentOnPlaybackError(error.toTrailerDiagnosticMessage())
+            }
         }
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -269,4 +276,14 @@ fun TrailerPlayer(
             )
         }
     }
+}
+
+private fun PlaybackException.toTrailerDiagnosticMessage(): String {
+    val causeName = cause?.javaClass?.simpleName ?: "none"
+    return listOf(
+        "Diagnostic: PLAYER_$errorCodeName",
+        "playerError=$errorCodeName",
+        "playerErrorCode=$errorCode",
+        "cause=$causeName"
+    ).joinToString("\n")
 }

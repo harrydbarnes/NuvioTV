@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -68,12 +71,16 @@ fun SharedTrailerOverlay(
     val seekOverlayState = remember { TrailerSeekOverlayState() }
     var seekToken by remember { mutableIntStateOf(0) }
     var seekDeltaMs by remember { mutableLongStateOf(0L) }
+    var playbackErrorMessage by remember { mutableStateOf<String?>(null) }
+    val trailerErrorFallback = stringResource(R.string.detail_trailer_error)
+    val visibleErrorMessage = errorMessage ?: playbackErrorMessage
 
-    val canControlPlayback = !trailerUrl.isNullOrBlank() && !isLoading && errorMessage == null
+    val canControlPlayback = !trailerUrl.isNullOrBlank() && !isLoading && visibleErrorMessage == null
 
     LaunchedEffect(trailerUrl, trailerAudioUrl, isLoading, errorMessage) {
         isPaused = false
         seekOverlayVisible = false
+        playbackErrorMessage = null
     }
 
     LaunchedEffect(seekOverlayVisible, canControlPlayback, seekToken) {
@@ -172,7 +179,7 @@ fun SharedTrailerOverlay(
                     }
                 }
         ) {
-            if (!trailerUrl.isNullOrBlank() && errorMessage == null) {
+            if (!trailerUrl.isNullOrBlank() && visibleErrorMessage == null) {
                 TrailerPlayer(
                     trailerUrl = trailerUrl,
                     trailerAudioUrl = trailerAudioUrl,
@@ -183,6 +190,12 @@ fun SharedTrailerOverlay(
                     onProgressChanged = { position, duration ->
                         seekOverlayState.positionMs = position
                         seekOverlayState.durationMs = duration
+                    },
+                    onPlaybackError = { diagnostic ->
+                        playbackErrorMessage = listOf(
+                            errorMessage ?: trailerErrorFallback,
+                            diagnostic
+                        ).joinToString("\n")
                     },
                     onEnded = onDismiss,
                     modifier = Modifier.fillMaxSize()
@@ -216,7 +229,7 @@ fun SharedTrailerOverlay(
                 }
             }
 
-            if (!errorMessage.isNullOrBlank()) {
+            if (!visibleErrorMessage.isNullOrBlank()) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -225,9 +238,13 @@ fun SharedTrailerOverlay(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White
+                        text = visibleErrorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth(0.82f)
+                            .heightIn(max = 260.dp)
+                            .verticalScroll(rememberScrollState())
                     )
                     Button(onClick = onRetry) {
                         Text(text = stringResource(R.string.action_retry))

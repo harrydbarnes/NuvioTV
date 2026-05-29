@@ -1,11 +1,15 @@
 package com.nuvio.tv.data.trailer
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
 import com.nuvio.tv.data.remote.api.TmdbApi
 import com.nuvio.tv.data.remote.api.TmdbVideoResult
 import com.nuvio.tv.data.remote.api.TrailerApi
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Clock
 import java.net.URI
 import java.time.Instant
@@ -29,9 +33,28 @@ class TrailerService(
     private val inAppYouTubeExtractor: InAppYouTubeExtractor,
     private val tmdbSettingsDataStore: TmdbSettingsDataStore,
     private val tmdbService: TmdbService,
-    private val clock: Clock
+    private val clock: Clock,
+    private val context: Context? = null
 ) {
     @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        trailerApi: TrailerApi,
+        tmdbApi: TmdbApi,
+        inAppYouTubeExtractor: InAppYouTubeExtractor,
+        tmdbSettingsDataStore: TmdbSettingsDataStore,
+        tmdbService: TmdbService
+    ) : this(
+        context = context,
+        trailerApi = trailerApi,
+        tmdbApi = tmdbApi,
+        inAppYouTubeExtractor = inAppYouTubeExtractor,
+        tmdbSettingsDataStore = tmdbSettingsDataStore,
+        tmdbService = tmdbService,
+        clock = Clock.systemUTC(),
+        context = context
+    )
+
     constructor(
         trailerApi: TrailerApi,
         tmdbApi: TmdbApi,
@@ -220,18 +243,51 @@ class TrailerService(
         youtubeUrl: String,
         title: String? = null,
         year: String? = null
-    ): TrailerPlaybackSource? = withContext(Dispatchers.IO) {
+    ): TrailerPlaybackSource? {
+        return getTrailerPlaybackResolutionFromYouTubeUrl(
+            youtubeUrl = youtubeUrl,
+            title = title,
+            year = year
+        ).source
+    }
+
+    suspend fun getTrailerPlaybackResolutionFromYouTubeUrl(
+        youtubeUrl: String,
+        title: String? = null,
+        year: String? = null
+    ): TrailerPlaybackResolution = withContext(Dispatchers.IO) {
+        val details = mutableListOf<String>()
+        var lastDiagnostic = TrailerPlaybackDiagnostic(code = "TRAILER_RESOLUTION_FAILED")
+        fun buildFailure(code: String = lastDiagnostic.code): TrailerPlaybackResolution {
+            val mergedDetails = (lastDiagnostic.details + details).distinct()
+            return TrailerPlaybackResolution(
+                source = null,
+                diagnostic = TrailerPlaybackDiagnostic(code = code, details = mergedDetails.takeLast(16))
+            )
+        }
+
         try {
             val youtubeKey = extractYouTubeVideoId(youtubeUrl)
+            details += "service=youtube"
+            details += "youtubeId=${youtubeKey?.let { "***${it.takeLast(4)}" } ?: "invalid"}"
+            details += networkDiagnosticDetails()
             if (!youtubeKey.isNullOrBlank()) {
                 getValidCachedYoutubeSource(youtubeKey)?.let { cached ->
                     Log.d(TAG, "YouTube cache hit for key=${obfuscateYoutubeKey(youtubeKey)}")
-                    return@withContext cached
+                    return@withContext TrailerPlaybackResolution(
+                        source = cached,
+                        diagnostic = TrailerPlaybackDiagnostic(
+                            code = "YT_CACHE_HIT",
+                            details = details + "cache=hit"
+                        )
+                    )
                 }
             }
 
             Log.d(TAG, "Attempting in-app YouTube extraction for ${summarizeUrl(youtubeUrl)}")
-            val localSource = inAppYouTubeExtractor.extractPlaybackSource(youtubeUrl)
+            val localResult = inAppYouTubeExtractor.extractPlaybackSourceWithDiagnostics(youtubeUrl)
+            lastDiagnostic = localResult.diagnostic
+            val localSource = localResult.source
             if (localSource != null) {
                 if (!youtubeKey.isNullOrBlank()) {
                     youtubeSourceCache[youtubeKey] = CachedTrailerPlaybackSource(
@@ -245,22 +301,29 @@ class TrailerService(
                     "Using in-app YouTube source for ${summarizeUrl(youtubeUrl)} " +
                         "(audioPresent=${!localSource.audioUrl.isNullOrBlank()})"
                 )
-                return@withContext localSource
+                return@withContext TrailerPlaybackResolution(
+                    source = localSource,
+                    diagnostic = localResult.diagnostic
+                )
             }
 
             // Fallback to remote trailer resolver if in-app extraction fails.
             Log.w(TAG, "In-app extraction failed, falling back to backend resolver for ${summarizeUrl(youtubeUrl)}")
             val response = trailerApi.getTrailer(youtubeUrl = youtubeUrl, title = title, year = year)
+            details += "backendFallback=http-${response.code()}"
             if (!response.isSuccessful) {
                 Log.w(TAG, "Backend trailer fallback failed (${response.code()}) for ${summarizeUrl(youtubeUrl)}")
-                return@withContext null
+                return@withContext buildFailure("BACKEND_FALLBACK_HTTP_${response.code()}")
             }
 
-            val fallbackUrl = response.body()?.url ?: return@withContext null
-            if (!isValidUrl(fallbackUrl)) return@withContext null
+            val fallbackUrl = response.body()?.url
+            if (!isValidUrl(fallbackUrl)) {
+                details += "backendFallbackUrl=invalid"
+                return@withContext buildFailure("BACKEND_FALLBACK_INVALID_URL")
+            }
 
+            val fallbackSource = TrailerPlaybackSource(videoUrl = fallbackUrl!!)
             if (!youtubeKey.isNullOrBlank()) {
-                val fallbackSource = TrailerPlaybackSource(videoUrl = fallbackUrl)
                 youtubeSourceCache[youtubeKey] = CachedTrailerPlaybackSource(
                     playbackSource = fallbackSource,
                     cachedAt = Instant.now(clock),
@@ -268,12 +331,19 @@ class TrailerService(
                 )
             }
             Log.d(TAG, "Using backend fallback source for ${summarizeUrl(youtubeUrl)}")
-            TrailerPlaybackSource(videoUrl = fallbackUrl)
+            TrailerPlaybackResolution(
+                source = fallbackSource,
+                diagnostic = TrailerPlaybackDiagnostic(
+                    code = "BACKEND_FALLBACK_OK",
+                    details = (lastDiagnostic.details + details + "backendFallbackUrl=valid").takeLast(16)
+                )
+            )
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error getting trailer from YouTube: ${e.message}", e)
-            null
+            details += "serviceError=${e.javaClass.simpleName.ifBlank { "Exception" }}"
+            buildFailure("TRAILER_SERVICE_EXCEPTION")
         }
     }
 
@@ -391,6 +461,37 @@ class TrailerService(
     fun clearCache() {
         cache.clear()
         youtubeSourceCache.clear()
+    }
+
+    private fun networkDiagnosticDetails(): List<String> {
+        return runCatching {
+            val appContext = context ?: return listOf("network=diagnostic-unavailable")
+            val connectivityManager = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return listOf("network=unavailable-manager")
+            val activeNetwork = connectivityManager.activeNetwork
+                ?: return listOf("network=none")
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+                ?: return listOf("network=unknown-capabilities")
+
+            val transports = buildList {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) add("ethernet")
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) add("wifi")
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) add("cellular")
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) add("vpn")
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) add("bluetooth")
+            }.ifEmpty { listOf("unknown") }
+
+            listOf(
+                "networkTransport=${transports.joinToString("+")}",
+                "networkValidated=${capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)}",
+                "networkInternet=${capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)}",
+                "networkCaptivePortal=${capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)}",
+                "networkNotMetered=${capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)}",
+                "networkNotRestricted=${capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)}"
+            )
+        }.getOrElse {
+            listOf("network=diagnostic-unavailable")
+        }
     }
 
     /**
