@@ -111,6 +111,20 @@ fun AccountScreen(
                     )
                 }
                 item {
+                    if (uiState.debugBackendSwitchEnabled) {
+                        DebugSyncBackendSwitchCard(
+                            uiState = uiState,
+                            requireConfirmation = false,
+                            onSwitchBackend = viewModel::switchDebugBackend
+                        )
+                    } else {
+                        AccountInfoCard(
+                            label = stringResource(R.string.account_sync_backend_label),
+                            value = uiState.syncBackendName
+                        )
+                    }
+                }
+                item {
                     AccountActionCard(
                         icon = Icons.Default.Person,
                         title = stringResource(R.string.account_signin_create_title),
@@ -159,6 +173,20 @@ fun AccountScreen(
                         label = stringResource(R.string.account_signed_in_as),
                         value = authState.email
                     )
+                }
+                item {
+                    if (uiState.debugBackendSwitchEnabled) {
+                        DebugSyncBackendSwitchCard(
+                            uiState = uiState,
+                            requireConfirmation = true,
+                            onSwitchBackend = viewModel::switchDebugBackend
+                        )
+                    } else {
+                        AccountInfoCard(
+                            label = stringResource(R.string.account_sync_backend_label),
+                            value = uiState.syncBackendName
+                        )
+                    }
                 }
                 item {
                     LinkedDevicesSection(

@@ -40,6 +40,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -135,6 +137,7 @@ internal fun ModernHomeRowsList(
     focusedHeroMediaNonce: State<Int>,
     onFocusedHeroMediaNonceChange: (Int) -> Unit,
     onExpansionInteractionNonceChange: (Int) -> Unit,
+    blockLeftOnFirstExpandedItem: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Unwrap StableRef wrappers for internal use (not passed to child composables)
@@ -150,6 +153,7 @@ internal fun ModernHomeRowsList(
 
     val density = LocalDensity.current
     val context = LocalContext.current
+    val layoutDirection = LocalLayoutDirection.current
     val verticalPrefetchImageLoader = context.imageLoader
 
     LaunchedEffect(verticalPrefetchImageLoader, density) {
@@ -266,11 +270,29 @@ internal fun ModernHomeRowsList(
                 .focusRestorer { focusRestorerRequester() }
                 .onPreviewKeyEvent { event ->
                     val firstRowKey = carouselRows.list.firstOrNull()?.key
-                    event.type == KeyEventType.KeyDown &&
+                    val lastRowKey = carouselRows.list.lastOrNull()?.key
+                    if (event.type == KeyEventType.KeyDown &&
                         event.key == Key.DirectionUp &&
                         effectiveExpandEnabled &&
                         expandedCatalogFocusKey.value != null &&
                         activeRowKey.value == firstRowKey
+                    ) return@onPreviewKeyEvent true
+                    if (event.type == KeyEventType.KeyDown &&
+                        event.key == Key.DirectionDown &&
+                        effectiveExpandEnabled &&
+                        expandedCatalogFocusKey.value != null &&
+                        activeRowKey.value == lastRowKey
+                    ) return@onPreviewKeyEvent true
+                    val blockKey = if (layoutDirection == LayoutDirection.Rtl)
+                        Key.DirectionRight else Key.DirectionLeft
+                    if (blockLeftOnFirstExpandedItem &&
+                        event.type == KeyEventType.KeyDown &&
+                        event.key == blockKey &&
+                        effectiveExpandEnabled &&
+                        expandedCatalogFocusKey.value != null &&
+                        activeItemIndex.value == 0
+                    ) return@onPreviewKeyEvent true
+                    false
                 }
                 .dpadVerticalFastScroll(
                     scrollableState = verticalRowListState,
