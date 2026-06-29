@@ -617,14 +617,13 @@ fun ModernHomeContent(
                         else -> activeCarouselItem.heroPreview
                     }
                     
-                    // Only use the real enrichmentActive flag from the ViewModel.
-                    // Additionally, if enrichment is enabled but no enriched data exists yet
-                    // for this item, treat as pending to avoid showing un-enriched addon data.
-                    // Exception: if enrichment already failed for this item, show addon data.
-                    // Also treat as pending when activeCarouselItem is null (row not yet resolved).
+                    // Keep the focused item's existing metadata visible while TMDB enrichment
+                    // is pending. Blank hero details are more disruptive than temporarily
+                    // showing addon metadata, and the enriched preview still replaces it once
+                    // available.
                     val heroEnrichmentEnabled = uiState.heroEnrichmentEnabled
                     val enrichmentFailed = activeItemId != null && activeItemId in failedEnrichmentIds
-                    val effectiveEnrichmentActive = activeCarouselItem == null || enrichmentActive ||
+                    val waitingForEnrichment = enrichmentActive ||
                         (enrichedHero == null && activeItemId != null && heroEnrichmentEnabled && !enrichmentFailed)
                     
                     val activeRowKeyVal = activeRowKey.value
@@ -639,6 +638,11 @@ fun ModernHomeContent(
                         resolvedHero?.poster,
                         activeRowFallbackBackdrop
                     )
+
+                    val hasFocusedHeroContent =
+                        resolvedHero?.title?.isNotBlank() == true || !heroBackdrop.isNullOrBlank()
+                    val effectiveEnrichmentActive = activeCarouselItem == null ||
+                        (waitingForEnrichment && !hasFocusedHeroContent)
                     
                     Triple(heroBackdrop, resolvedHero, effectiveEnrichmentActive)
                 }
@@ -793,8 +797,8 @@ fun ModernHomeContent(
                             }
                         }
                         val displayedBackdrop = HeroBackdropState.lastDisplayedUrl
-                        val corrected = if (!displayedBackdrop.isNullOrBlank() &&
-                            displayedBackdrop != currentStable.heroBackdrop
+                        val corrected = if (currentStable.heroBackdrop.isNullOrBlank() &&
+                            !displayedBackdrop.isNullOrBlank()
                         ) {
                             currentStable.copy(heroBackdrop = displayedBackdrop)
                         } else {
