@@ -72,4 +72,24 @@ class NextUpEpisodeSequenceTest {
     @Test fun `no successor leaves next up empty`() {
         assertNull(resolve(listOf(video(1))))
     }
+    @Test fun `actual AIOMetadata snapshot selects episode two only when upcoming enabled`() {
+        val videos = listOf(
+            video(1, "2026-09-04T12:00:00.000Z", available = true),
+            video(2, "2026-09-11T12:00:00.000Z", available = false),
+            video(3, "2026-09-18T12:00:00.000Z", available = false),
+            video(4, "2026-09-25T12:00:00.000Z", available = false),
+            video(5, "2026-10-02T12:00:00.000Z", available = false),
+            video(6, "2026-10-09T12:00:00.000Z", available = false),
+            video(7, "2026-10-16T12:00:00.000Z", available = false),
+            video(8, "2026-10-23T12:00:00.000Z", available = false),
+            video(9, "2026-10-30T12:00:00.000Z", available = false),
+            video(10, "2026-11-06T12:00:00.000Z", available = false),
+            video(11, "2026-11-13T12:00:00.000Z", available = false),
+            video(12, "2026-11-20T12:00:00.000Z", available = false),
+            video(13, "2026-11-27T12:00:00.000Z", available = false),
+            video(14, "2026-12-04T12:00:00.000Z", available = false)
+        )
+        assertNull(resolve(videos))
+        assertEquals(2, resolve(videos, true)?.episode)
+    }
 }
