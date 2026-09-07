@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,6 +99,8 @@ import java.util.Locale
 import java.util.TimeZone
 import com.nuvio.tv.ui.util.localizeEpisodeTitle
 import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 private const val EPISODE_CARD_CONTENT_TYPE = "episode_card"
 private const val EPISODE_SCROLL_REPEAT_THROTTLE_MS = 80L
@@ -314,6 +317,9 @@ fun EpisodesRow(
         prefetchStrategy = rowPrefetchStrategy
     )
     var lastHorizontalKeyRepeatTime by remember { mutableStateOf(0L) }
+    val navigationScope = rememberCoroutineScope()
+    var navigationJob by remember { mutableStateOf<Job?>(null) }
+    var focusedEpisodeId by remember { mutableStateOf<String?>(null) }
     val episodeIds = remember(dedupedEpisodes) { dedupedEpisodes.mapTo(mutableSetOf()) { it.id } }
     LaunchedEffect(episodeIds, episodeFocusRequesters) {
         episodeFocusRequesters.keys.retainAll(episodeIds)
@@ -356,6 +362,9 @@ fun EpisodesRow(
                 val native = event.nativeKeyEvent
                 val isHorizontalKey = native.keyCode == AndroidKeyEvent.KEYCODE_DPAD_LEFT ||
                     native.keyCode == AndroidKeyEvent.KEYCODE_DPAD_RIGHT
+                if (isHorizontalKey && native.action == AndroidKeyEvent.ACTION_UP) {
+                    return@onPreviewKeyEvent true
+                }
                 if (
                     isHorizontalKey &&
                     native.action == AndroidKeyEvent.ACTION_DOWN &&
@@ -366,6 +375,26 @@ fun EpisodesRow(
                         return@onPreviewKeyEvent true
                     }
                     lastHorizontalKeyRepeatTime = now
+                }
+                if (isHorizontalKey && native.action == AndroidKeyEvent.ACTION_DOWN) {
+                    if (navigationJob?.isActive == true) return@onPreviewKeyEvent true
+                    val currentIndex = dedupedEpisodes.indexOfFirst { it.id == focusedEpisodeId }
+                    if (currentIndex < 0) return@onPreviewKeyEvent false
+                    val targetIndex = currentIndex +
+                        if (native.keyCode == AndroidKeyEvent.KEYCODE_DPAD_LEFT) -1 else 1
+                    val target = dedupedEpisodes.getOrNull(targetIndex)
+                        ?: return@onPreviewKeyEvent true
+                    navigationJob = navigationScope.launch {
+                        // A requester for an off-screen lazy item has no attached
+                        // focus target. Compose it before requesting focus so the
+                        // first visible card never becomes a navigation boundary.
+                        val requester = episodeFocusRequesters.getOrPut(target.id) { FocusRequester() }
+                        if (!runCatching { requester.requestFocus() }.getOrDefault(false)) {
+                            lazyListState.scrollToItem(targetIndex)
+                            requester.requestFocusAfterFrames(frames = 1)
+                        }
+                    }
+                    return@onPreviewKeyEvent true
                 }
                 false
             },
@@ -388,7 +417,12 @@ fun EpisodesRow(
             val episodeFocusRequester = remember(episode.id) { episodeFocusRequesters.getOrPut(episode.id) { FocusRequester() } }
             val episodeOnClick = remember(episode.id) { { onEpisodeClick(episode) } }
             val episodeOnLongPress = remember(episode.id) { { optionsEpisode = episode } }
-            val episodeOnFocused = remember(episode.id) { { onEpisodeFocused(episode.id) } }
+            val episodeOnFocused = remember(episode.id, onEpisodeFocused) {
+                {
+                    focusedEpisodeId = episode.id
+                    onEpisodeFocused(episode.id)
+                }
+            }
             val isRestoreTarget = episode.id == restoreEpisodeId
             val episodeOnFocusRestored = remember(isRestoreTarget, onRestoreFocusHandled) {
                 if (isRestoreTarget) onRestoreFocusHandled else null

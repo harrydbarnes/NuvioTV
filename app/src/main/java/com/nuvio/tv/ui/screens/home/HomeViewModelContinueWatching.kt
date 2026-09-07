@@ -2221,10 +2221,11 @@ private const val CW_NEXT_UP_NEW_SEASON_UNAIRED_WINDOW_DAYS = 7
 internal fun isNextUpEpisodeUnaired(releaseDate: LocalDate?, today: LocalDate): Boolean =
     releaseDate == null || releaseDate.isAfter(today)
 
-private fun resolveNextUpVideoFromMeta(
+internal fun resolveNextUpVideoFromMeta(
     progress: WatchProgress,
     meta: CwMetaSummary,
-    showUnairedNextUp: Boolean
+    showUnairedNextUp: Boolean,
+    todayLocal: LocalDate = LocalDate.now(ZoneId.systemDefault())
 ): CwVideoSummary? {
     val episodes = meta.videos
         .filter { video ->
@@ -2271,9 +2272,17 @@ private fun resolveNextUpVideoFromMeta(
         return null
     }
 
-    val todayLocal = LocalDate.now(ZoneId.systemDefault())
     val watchedEpisodeSeason = episodes[watchedIndex].season
-    val nextVideo = episodes.drop(watchedIndex + 1).firstOrNull { video ->
+    // Choose the successor before applying release eligibility. Searching for an
+    // eligible episode can skip unaired/missing-date episodes and advertise E6
+    // after E1. Incomplete metadata must not make that jump either.
+    val nextVideo = episodes.getOrNull(watchedIndex + 1)?.takeIf { video ->
+        val expectedEpisode = if (video.season == watchedEpisodeSeason) {
+            (episodes[watchedIndex].episode ?: return@takeIf false) + 1
+        } else {
+            1
+        }
+        if (video.episode != expectedEpisode) return@takeIf false
         val releaseDate = parseEpisodeReleaseDate(video.released)
         val isSeasonRollover = video.season != watchedEpisodeSeason
         if (isSeasonRollover) {
@@ -2282,26 +2291,26 @@ private fun resolveNextUpVideoFromMeta(
                     "skip contentId=${progress.contentId} name=${progress.name} reason=unaired-next-season-missing-date " +
                         "seed=${seedSeason}x${seedEpisode} next=${video.season}x${video.episode}"
                 )
-                return@firstOrNull false
+                return@takeIf false
             }
             if (!releaseDate.isAfter(todayLocal)) {
-                return@firstOrNull true
+                return@takeIf true
             }
             // Match mobile: show unaired next-season episodes within 7-day window
             if (showUnairedNextUp) {
                 val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(todayLocal, releaseDate)
                 if (daysUntil <= CW_NEXT_UP_NEW_SEASON_UNAIRED_WINDOW_DAYS) {
-                    return@firstOrNull true
+                    return@takeIf true
                 }
             }
-            return@firstOrNull false
+            return@takeIf false
         }
 
         if (!isNextUpEpisodeUnaired(releaseDate, todayLocal)) {
-            return@firstOrNull true
+            return@takeIf true
         }
         if (releaseDate == null && video.available == false) {
-            return@firstOrNull false
+            return@takeIf false
         }
         showUnairedNextUp
     }
