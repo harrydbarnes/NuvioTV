@@ -42,6 +42,8 @@ import com.nuvio.tv.ui.components.NuvioDialog
 private val subtitleColors = listOf(
     Color.White,
     Color(0xFFD9D9D9),
+    Color(0xFF999999),
+    Color(0xFF666666),
     Color.Yellow,
     Color.Cyan,
     Color.Green,

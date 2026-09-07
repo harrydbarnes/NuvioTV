@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import kotlin.math.roundToInt
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +61,8 @@ import com.nuvio.tv.R
 private val PANEL_TEXT_COLORS = listOf(
     Color.White,
     Color(0xFFD9D9D9),
+    Color(0xFF999999),
+    Color(0xFF666666),
     Color(0xFFFFD700),
     Color(0xFF00E5FF),
     Color(0xFFFF5C5C),
@@ -183,8 +189,16 @@ internal fun SubtitleStyleSidePanel(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)) {
-                            PANEL_TEXT_COLORS.forEach { color ->
+                        val selectedColorIndex = PANEL_TEXT_COLORS.indexOfFirst {
+                            it.toArgb() == Color(subtitleStyle.textColor).copy(alpha = 1f).toArgb()
+                        }.coerceAtLeast(0)
+                        LazyRow(
+                            state = rememberLazyListState(initialFirstVisibleItemIndex = selectedColorIndex),
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+                        ) {
+                            items(PANEL_TEXT_COLORS, key = { it.toArgb() }) { color ->
                                 SubtitleStyleColorChip(
                                     color = color,
                                     isSelected = Color(subtitleStyle.textColor).copy(alpha = 1f).toArgb() == color.copy(alpha = 1f).toArgb(),
