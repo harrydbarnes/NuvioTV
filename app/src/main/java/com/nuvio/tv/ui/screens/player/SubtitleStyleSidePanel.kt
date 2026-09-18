@@ -103,7 +103,7 @@ internal fun SubtitleStyleSidePanel(
     Column(
         modifier = modifier
             .width(760.dp)
-            .height(330.dp)
+            .height(420.dp)
             .clip(RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp))
             .background(Color(0xFF101010))
             .then(if (isStyleDisabledByLibass) Modifier.focusProperties { canFocus = false } else Modifier)
@@ -273,6 +273,24 @@ internal fun SubtitleStyleSidePanel(
                         SubtitleStyleStepperButton(
                             icon = Icons.Default.Add,
                             onClick = { onEvent(PlayerEvent.OnSetSubtitleVerticalOffset(subtitleStyle.verticalOffset + 5)) }
+                        )
+                    }
+                }
+                SubtitleStyleSection(
+                    title = stringResource(R.string.subtitle_style_hdr_brightness),
+                    modifier = Modifier
+                        .width(StyleCardWidth)
+                        .height(StyleCardHeight)
+                ) {
+                    SubtitleStyleSettingRow {
+                        SubtitleStyleStepperButton(
+                            icon = Icons.Default.Remove,
+                            onClick = { onEvent(PlayerEvent.OnSetSubtitleHdrBrightness(subtitleStyle.hdrBrightnessPercent - 10)) }
+                        )
+                        SubtitleStyleValueDisplay(text = "${subtitleStyle.hdrBrightnessPercent}%")
+                        SubtitleStyleStepperButton(
+                            icon = Icons.Default.Add,
+                            onClick = { onEvent(PlayerEvent.OnSetSubtitleHdrBrightness(subtitleStyle.hdrBrightnessPercent + 10)) }
                         )
                     }
                 }
