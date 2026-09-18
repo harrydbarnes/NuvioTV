@@ -1692,6 +1692,9 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
         is PlayerEvent.OnSetSubtitleTextColor -> {
             scope.launch { playerSettingsDataStore.setSubtitleTextColor(event.color) }
         }
+        is PlayerEvent.OnSetSubtitleHdrBrightness -> {
+            scope.launch { playerSettingsDataStore.setSubtitleHdrBrightnessPercent(event.percent) }
+        }
         is PlayerEvent.OnSetSubtitleBold -> {
             scope.launch { playerSettingsDataStore.setSubtitleBold(event.bold) }
         }
@@ -1709,6 +1712,7 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                 val defaults = SubtitleStyleSettings()
                 playerSettingsDataStore.setSubtitleSize(defaults.size)
                 playerSettingsDataStore.setSubtitleTextColor(defaults.textColor)
+                playerSettingsDataStore.setSubtitleHdrBrightnessPercent(defaults.hdrBrightnessPercent)
                 playerSettingsDataStore.setSubtitleBold(defaults.bold)
                 playerSettingsDataStore.setSubtitleOutlineEnabled(defaults.outlineEnabled)
                 playerSettingsDataStore.setSubtitleOutlineColor(defaults.outlineColor)

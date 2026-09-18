@@ -1714,7 +1714,8 @@ private fun MpvPlayerSurface(
         mpvView.applyAspectMode(aspectMode)
     }
 
-    LaunchedEffect(mpvView, subtitleStyle) {
+    // Re-evaluate HDR once mpv has loaded the video format, not only when the style changes.
+    LaunchedEffect(mpvView, subtitleStyle, isPlaying, isBuffering) {
         mpvView.applySubtitleStyle(subtitleStyle)
     }
 }
@@ -1872,7 +1873,8 @@ private fun PlayerView.applyExoAspectMode(mode: AspectMode) {
 
 private data class SubtitleAppliedConfig(
     val style: SubtitleStyleSettings,
-    val isAss: Boolean
+    val isAss: Boolean,
+    val isHdr: Boolean
 )
 
 private fun PlayerView.isAssOrSsaSubtitleSelected(): Boolean {
@@ -1905,12 +1907,28 @@ private fun PlayerView.isAssOrSsaSubtitleSelected(): Boolean {
     return false
 }
 
+private fun PlayerView.isHdrVideoSelected(): Boolean {
+    val tracks = player?.currentTracks ?: return false
+    return tracks.groups.any { group ->
+        group.type == androidx.media3.common.C.TRACK_TYPE_VIDEO &&
+            (0 until group.length).any { index ->
+                val format = group.getTrackFormat(index)
+                val transfer = format.colorInfo?.colorTransfer
+                group.isTrackSelected(index) &&
+                    (transfer == androidx.media3.common.C.COLOR_TRANSFER_ST2084 ||
+                        transfer == androidx.media3.common.C.COLOR_TRANSFER_HLG ||
+                        format.sampleMimeType == androidx.media3.common.MimeTypes.VIDEO_DOLBY_VISION)
+            }
+    }
+}
+
 private fun PlayerView.applySubtitleStyleIfNeeded(
     subtitleStyle: SubtitleStyleSettings,
     force: Boolean = false
 ) {
     val isAss = isAssOrSsaSubtitleSelected()
-    val config = SubtitleAppliedConfig(subtitleStyle, isAss)
+    val isHdr = isHdrVideoSelected()
+    val config = SubtitleAppliedConfig(subtitleStyle, isAss, isHdr)
     if (!force && getTag(R.id.player_view_subtitle_style_tag) == config) {
         return
     }
@@ -1941,7 +1959,8 @@ private fun PlayerView.applySubtitleStyleIfNeeded(
 
         setStyle(
             androidx.media3.ui.CaptionStyleCompat(
-                subtitleStyle.textColor,
+                if (isHdr) dimSubtitleColorForHdr(subtitleStyle.textColor, subtitleStyle.hdrBrightnessPercent)
+                else subtitleStyle.textColor,
                 subtitleStyle.backgroundColor,
                 android.graphics.Color.TRANSPARENT,
                 edgeType,
@@ -1950,7 +1969,8 @@ private fun PlayerView.applySubtitleStyleIfNeeded(
             )
         )
 
-        setApplyEmbeddedStyles(!isAss)
+        // Embedded text colours can bypass the HDR brightness setting.
+        setApplyEmbeddedStyles(!isAss && !(isHdr && subtitleStyle.hdrBrightnessPercent < 100))
 
         val bottomPaddingFraction =
             (0.06f + (subtitleStyle.verticalOffset / 250f)).coerceIn(0f, 0.4f)
