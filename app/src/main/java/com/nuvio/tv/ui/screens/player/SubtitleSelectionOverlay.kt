@@ -967,6 +967,24 @@ private fun SubtitleStyleRail(
             }
             item {
                 OverlaySectionCard(
+                    title = stringResource(R.string.subtitle_style_hdr_brightness),
+                    modifier = styleCardModifier
+                ) {
+                    StepperRow(
+                        value = "${subtitleStyle.hdrBrightnessPercent}%",
+                        onDecrease = { dispatchStyleEvent(PlayerEvent.OnSetSubtitleHdrBrightness(subtitleStyle.hdrBrightnessPercent - 10)) },
+                        onIncrease = { dispatchStyleEvent(PlayerEvent.OnSetSubtitleHdrBrightness(subtitleStyle.hdrBrightnessPercent + 10)) },
+                        onMoveLeft = onMoveLeft,
+                        decrementFocusRequester = focusRequesters[StyleFocusKey.HdrBrightnessDecrease],
+                        incrementFocusRequester = focusRequesters[StyleFocusKey.HdrBrightnessIncrease],
+                        decrementFocusKey = StyleFocusKey.HdrBrightnessDecrease,
+                        incrementFocusKey = StyleFocusKey.HdrBrightnessIncrease,
+                        onFocusChanged = onStyleFocused
+                    )
+                }
+            }
+            item {
+                OverlaySectionCard(
                     title = stringResource(R.string.subtitle_style_outline),
                     modifier = styleCardModifier
                 ) {
@@ -1679,6 +1697,8 @@ private object StyleFocusKey {
     const val TextColorPrefix = "text_color"
     const val OpacityDecrease = "opacity_decrease"
     const val OpacityIncrease = "opacity_increase"
+    const val HdrBrightnessDecrease = "hdr_brightness_decrease"
+    const val HdrBrightnessIncrease = "hdr_brightness_increase"
     const val OutlineColorPrefix = "outline_color"
 }
 
@@ -1695,9 +1715,10 @@ private fun styleListIndexForFocusKey(focusKey: String): Int {
         focusKey == StyleFocusKey.Bold -> 2
         focusKey.startsWith("${StyleFocusKey.TextColorPrefix}:") -> 3
         focusKey == StyleFocusKey.OpacityDecrease || focusKey == StyleFocusKey.OpacityIncrease -> 4
-        focusKey == StyleFocusKey.OutlineToggle || focusKey.startsWith("${StyleFocusKey.OutlineColorPrefix}:") -> 5
-        focusKey == StyleFocusKey.OffsetDecrease || focusKey == StyleFocusKey.OffsetIncrease -> 6
-        focusKey == StyleFocusKey.Reset -> 7
+        focusKey == StyleFocusKey.HdrBrightnessDecrease || focusKey == StyleFocusKey.HdrBrightnessIncrease -> 5
+        focusKey == StyleFocusKey.OutlineToggle || focusKey.startsWith("${StyleFocusKey.OutlineColorPrefix}:") -> 6
+        focusKey == StyleFocusKey.OffsetDecrease || focusKey == StyleFocusKey.OffsetIncrease -> 7
+        focusKey == StyleFocusKey.Reset -> 8
         else -> 0
     }
 }
@@ -1716,6 +1737,8 @@ private fun rememberStyleFocusRequesters(): Map<String, FocusRequester> {
             StyleFocusKey.Bold,
             StyleFocusKey.OpacityDecrease,
             StyleFocusKey.OpacityIncrease,
+            StyleFocusKey.HdrBrightnessDecrease,
+            StyleFocusKey.HdrBrightnessIncrease,
             StyleFocusKey.OutlineToggle,
             StyleFocusKey.OffsetDecrease,
             StyleFocusKey.OffsetIncrease,
