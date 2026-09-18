@@ -429,7 +429,11 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             mpv.setPropertyInt("sub-margin-y", subMarginY)
             mpv.setPropertyDouble("sub-shadow-offset", shadowOffset)
             mpv.setPropertyString("sub-border-style", borderStyle)
-            mpv.setPropertyString("sub-color", toMpvColor(style.textColor))
+            val gamma = mpv.getPropertyString("video-params/gamma")?.lowercase(Locale.US).orEmpty()
+            val isHdr = gamma.contains("pq") || gamma.contains("hlg") || gamma.contains("st2084")
+            val textColor = if (isHdr) dimSubtitleColorForHdr(style.textColor, style.hdrBrightnessPercent)
+                else style.textColor
+            mpv.setPropertyString("sub-color", toMpvColor(textColor))
             mpv.setPropertyString("sub-back-color", toMpvColor(style.backgroundColor))
             mpv.setPropertyString("sub-outline-color", toMpvColor(style.outlineColor))
             mpv.setPropertyBoolean("sub-filter-sdh", style.stripSdh)
