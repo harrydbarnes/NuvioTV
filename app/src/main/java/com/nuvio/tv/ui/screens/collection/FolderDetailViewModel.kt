@@ -8,6 +8,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
+import com.nuvio.tv.core.util.hasNoReleaseInfo
 import com.nuvio.tv.core.util.isUnreleased
 import com.nuvio.tv.core.trakt.TraktPublicListSourceResolver
 import com.nuvio.tv.data.trailer.TrailerService
@@ -19,6 +20,7 @@ import com.nuvio.tv.domain.model.CollectionSource
 import com.nuvio.tv.domain.model.CollectionFolder
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.FolderViewMode
+import com.nuvio.tv.domain.model.HomeImdbRatingsVisibility
 import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.domain.model.MetaPreview
 import com.nuvio.tv.domain.model.TmdbCollectionSource
@@ -35,6 +37,7 @@ import com.nuvio.tv.ui.screens.home.HomeRow
 import com.nuvio.tv.ui.screens.home.HomeUiState
 import com.nuvio.tv.ui.screens.home.ModernCarouselRowBuildCache
 import com.nuvio.tv.ui.screens.home.ModernHomePresentationInput
+import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.ui.screens.home.buildModernHomePresentation
 import com.nuvio.tv.ui.screens.home.homeItemStatusKey
 import com.nuvio.tv.domain.repository.CatalogRepository
@@ -58,6 +61,7 @@ data class FolderDetailUiState(
     val collectionTitle: String = "",
     val viewMode: FolderViewMode = FolderViewMode.TABBED_GRID,
     val homeLayout: HomeLayout = HomeLayout.MODERN,
+    val homeImdbRatingsVisibility: HomeImdbRatingsVisibility = HomeImdbRatingsVisibility.SHOW_ALL,
     val posterLabelsEnabled: Boolean = true,
     val catalogAddonNameEnabled: Boolean = true,
     val catalogTypeSuffixEnabled: Boolean = true,
@@ -71,6 +75,7 @@ data class FolderDetailUiState(
     val focusedPosterBackdropTrailerMuted: Boolean = true,
     val focusedPosterBackdropTrailerPlaybackTarget: FocusedPosterTrailerPlaybackTarget =
         FocusedPosterTrailerPlaybackTarget.HERO_MEDIA,
+    val classicFocusGradientEnabled: Boolean = false,
     val posterCardWidthDp: Int = 126,
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
@@ -130,6 +135,7 @@ class FolderDetailViewModel @Inject constructor(
     private var movieWatchedJob: Job? = null
     private var enrichFocusJob: Job? = null
     private val enrichedItemIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    private val backgroundMetaPrefetchedIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val _enrichingItemId = MutableStateFlow<String?>(null)
     val enrichingItemId: StateFlow<String?> = _enrichingItemId.asStateFlow()
     private val _enrichedPreviews = MutableStateFlow<Map<String, MetaPreview>>(emptyMap())
@@ -227,6 +233,7 @@ class FolderDetailViewModel @Inject constructor(
 
             val addons = addonRepository.getInstalledAddons().first().enabledAddons()
             val homeLayout = layoutPreferenceDataStore.selectedLayout.first()
+            val homeImdbRatingsVisibility = layoutPreferenceDataStore.homeImdbRatingsVisibility.first()
             val posterLabelsEnabled = layoutPreferenceDataStore.posterLabelsEnabled.first()
             val catalogAddonNameEnabled = layoutPreferenceDataStore.catalogAddonNameEnabled.first()
             val catalogTypeSuffixEnabled = layoutPreferenceDataStore.catalogTypeSuffixEnabled.first()
@@ -240,6 +247,7 @@ class FolderDetailViewModel @Inject constructor(
             val focusedPosterBackdropTrailerMuted = layoutPreferenceDataStore.focusedPosterBackdropTrailerMuted.first()
             val focusedPosterBackdropTrailerPlaybackTarget =
                 layoutPreferenceDataStore.focusedPosterBackdropTrailerPlaybackTarget.first()
+            val classicFocusGradientEnabled = layoutPreferenceDataStore.classicFocusGradientEnabled.first()
             val posterCardWidthDp = layoutPreferenceDataStore.posterCardWidthDp.first()
             val posterCardHeightDp = layoutPreferenceDataStore.posterCardHeightDp.first()
             val posterCardCornerRadiusDp = layoutPreferenceDataStore.posterCardCornerRadiusDp.first()
@@ -264,10 +272,13 @@ class FolderDetailViewModel @Inject constructor(
                 }
                 // Generate placeholder CatalogRow with shimmer items for Modern/Classic follow-layout
                 val placeholderRow = if (useShimmerPlaceholders) {
-                    val (placeholderAddonId, placeholderCatalogId) = when (source) {
-                        is AddonCatalogCollectionSource -> source.addonId to source.catalogId
-                        is TmdbCollectionSource -> "tmdb" to buildTmdbSourceKey(source)
-                        is TraktCollectionSource -> "trakt" to buildTraktSourceKey(source)
+                    val (placeholderAddonId, placeholderCatalogId, placeholderBaseUrl) = when (source) {
+                        is AddonCatalogCollectionSource -> {
+                            val baseUrl = addons.find { it.id == source.addonId }?.baseUrl ?: ""
+                            Triple(source.addonId, source.catalogId, baseUrl)
+                        }
+                        is TmdbCollectionSource -> Triple("tmdb", buildTmdbSourceKey(source), "")
+                        is TraktCollectionSource -> Triple("trakt", buildTraktSourceKey(source), "")
                     }
                     val apiType = rawType.ifBlank { "movie" }
                     val fakeItems = (0 until 8).map { i ->
@@ -276,7 +287,7 @@ class FolderDetailViewModel @Inject constructor(
                             type = com.nuvio.tv.domain.model.ContentType.fromString(apiType),
                             rawType = apiType,
                             name = " ",
-                            poster = "placeholder://empty",
+                            poster = PLACEHOLDER_IMAGE_URL,
                             posterShape = com.nuvio.tv.domain.model.PosterShape.POSTER,
                             background = null,
                             logo = null,
@@ -289,7 +300,7 @@ class FolderDetailViewModel @Inject constructor(
                     CatalogRow(
                         addonId = placeholderAddonId,
                         addonName = "",
-                        addonBaseUrl = "",
+                        addonBaseUrl = placeholderBaseUrl,
                         catalogId = placeholderCatalogId,
                         catalogName = name,
                         type = com.nuvio.tv.domain.model.ContentType.fromString(apiType),
@@ -321,6 +332,7 @@ class FolderDetailViewModel @Inject constructor(
                     collectionTitle = collection?.title ?: "",
                     viewMode = viewMode,
                     homeLayout = homeLayout,
+                    homeImdbRatingsVisibility = homeImdbRatingsVisibility,
                     posterLabelsEnabled = posterLabelsEnabled,
                     catalogAddonNameEnabled = catalogAddonNameEnabled,
                     catalogTypeSuffixEnabled = catalogTypeSuffixEnabled,
@@ -334,6 +346,7 @@ class FolderDetailViewModel @Inject constructor(
                         AppFeaturePolicy.inAppTrailerPlaybackEnabled,
                     focusedPosterBackdropTrailerMuted = focusedPosterBackdropTrailerMuted,
                     focusedPosterBackdropTrailerPlaybackTarget = focusedPosterBackdropTrailerPlaybackTarget,
+                    classicFocusGradientEnabled = classicFocusGradientEnabled && homeLayout == HomeLayout.CLASSIC,
                     posterCardWidthDp = posterCardWidthDp,
                     posterCardHeightDp = posterCardHeightDp,
                     posterCardCornerRadiusDp = posterCardCornerRadiusDp,
@@ -358,7 +371,9 @@ class FolderDetailViewModel @Inject constructor(
         val state = _uiState.value
         if (!hasAllTab) return
         val sourceTabs = state.tabs.drop(1) // skip the All tab
-        val anyLoading = sourceTabs.any { it.isLoading }
+        val anyLoading = sourceTabs.any { tab ->
+            tab.catalogRow?.isLoading == true || tab.isLoading
+        }
         // Only include real loaded rows (exclude placeholder shimmer rows)
         val loadedRows = sourceTabs.mapNotNull { tab ->
             tab.catalogRow?.takeIf { !it.isLoading }
@@ -366,20 +381,42 @@ class FolderDetailViewModel @Inject constructor(
 
         if (loadedRows.isEmpty()) return
 
-        // Round-robin interleave items from all loaded catalog rows
+        val currentAllRow = state.tabs.getOrNull(0)?.catalogRow
+
+        if (anyLoading && currentAllRow != null && currentAllRow.items.isNotEmpty()) {
+            _uiState.update { s ->
+                val tabs = s.tabs.toMutableList()
+                tabs[0] = tabs[0].copy(
+                    isLoading = false,
+                    catalogRow = currentAllRow.copy(isLoading = true)
+                )
+                s.copy(tabs = tabs)
+            }
+            return
+        }
+
+        // All pending loads completed — compute the new batch of items via round-robin
+        // and APPEND them to the existing ALL tab content (stable scroll position).
         val mergedItems = roundRobinMerge(loadedRows.map { it.items })
-        // Use the first loaded row as a template for the merged CatalogRow
+        val existingItems = currentAllRow?.items.orEmpty()
+        val existingIds = existingItems.mapTo(mutableSetOf()) { it.id }
+        val newItems = mergedItems.filter { it.id !in existingIds }
+        val finalItems = existingItems + newItems
+
         val templateRow = loadedRows.first()
+        val hasMore = sourceTabs.any { tab -> tab.catalogRow?.hasMore == true }
         val mergedRow = templateRow.copy(
             catalogName = "All",
-            items = mergedItems
+            items = finalItems,
+            hasMore = hasMore,
+            isLoading = false
         )
 
         _uiState.update { s ->
             val tabs = s.tabs.toMutableList()
             tabs[0] = tabs[0].copy(
                 catalogRow = mergedRow,
-                isLoading = anyLoading
+                isLoading = false
             )
             s.copy(tabs = tabs)
         }
@@ -399,11 +436,11 @@ class FolderDetailViewModel @Inject constructor(
                     tab.catalogRow
                 } else if (tab.isLoading) {
                     // Generate a placeholder CatalogRow with shimmer items
-                    val (phAddonId, phCatalogId) = when (val src = tab.source) {
-                        is AddonCatalogCollectionSource -> src.addonId to src.catalogId
-                        is TmdbCollectionSource -> "tmdb" to buildTmdbSourceKey(src)
-                        is TraktCollectionSource -> "trakt" to buildTraktSourceKey(src)
-                        else -> "placeholder" to tab.label
+                    val (phAddonId, phCatalogId, phBaseUrl) = when (val src = tab.source) {
+                        is AddonCatalogCollectionSource -> Triple(src.addonId, src.catalogId, "")
+                        is TmdbCollectionSource -> Triple("tmdb", buildTmdbSourceKey(src), "")
+                        is TraktCollectionSource -> Triple("trakt", buildTraktSourceKey(src), "")
+                        else -> Triple("placeholder", tab.label, "")
                     }
                     val apiType = tab.rawType.ifBlank { "movie" }
                     val fakeItems = (0 until 8).map { i ->
@@ -412,7 +449,7 @@ class FolderDetailViewModel @Inject constructor(
                             type = com.nuvio.tv.domain.model.ContentType.fromString(apiType),
                             rawType = apiType,
                             name = " ",
-                            poster = "placeholder://empty",
+                            poster = PLACEHOLDER_IMAGE_URL,
                             posterShape = com.nuvio.tv.domain.model.PosterShape.POSTER,
                             background = null,
                             logo = null,
@@ -425,7 +462,7 @@ class FolderDetailViewModel @Inject constructor(
                     CatalogRow(
                         addonId = phAddonId,
                         addonName = "",
-                        addonBaseUrl = "",
+                        addonBaseUrl = phBaseUrl,
                         catalogId = phCatalogId,
                         catalogName = tab.label,
                         type = com.nuvio.tv.domain.model.ContentType.fromString(apiType),
@@ -468,6 +505,7 @@ class FolderDetailViewModel @Inject constructor(
                     add(GridItem.SeeAll(
                         catalogId = row.catalogId,
                         addonId = row.addonId,
+                        addonBaseUrl = row.addonBaseUrl,
                         type = row.apiType
                     ))
                 }
@@ -491,9 +529,11 @@ class FolderDetailViewModel @Inject constructor(
                         homeRows = homeRows,
                         catalogRows = allRows,
                         continueWatchingItems = emptyList(),
+                        upcomingItems = emptyList(),
                         useLandscapePosters = state.modernLandscapePostersEnabled,
                         showCatalogTypeSuffix = state.catalogTypeSuffixEnabled,
                         showFullReleaseDate = state.showFullReleaseDate,
+                        showImdbRatings = state.homeImdbRatingsVisibility.showRatings,
                         localeTag = com.nuvio.tv.LocaleCache.localeTag
                     ),
                     cache = modernCarouselRowBuildCache,
@@ -508,6 +548,7 @@ class FolderDetailViewModel @Inject constructor(
                         heroSectionEnabled = false,
                         isLoading = anyLoading,
                         homeLayout = s.homeLayout,
+                        homeImdbRatingsVisibility = s.homeImdbRatingsVisibility,
                         posterLabelsEnabled = if (s.homeLayout == HomeLayout.MODERN) false else s.posterLabelsEnabled,
                         modernLandscapePostersEnabled = s.modernLandscapePostersEnabled,
                         modernHeroFullScreenBackdropEnabled = s.modernHeroFullScreenBackdropEnabled,
@@ -524,7 +565,8 @@ class FolderDetailViewModel @Inject constructor(
                         hideUnreleasedContent = s.hideUnreleasedContent,
                         showFullReleaseDate = s.showFullReleaseDate,
                         movieWatchedStatus = s.movieWatchedStatus,
-                        heroEnrichmentEnabled = computedHeroEnrichmentEnabled
+                        heroEnrichmentEnabled = computedHeroEnrichmentEnabled,
+                        classicFocusGradientEnabled = s.classicFocusGradientEnabled
                     )
                     s.copy(followLayoutHomeState = homeState.copy(modernHomePresentation = modernPresentation))
                 }
@@ -539,6 +581,7 @@ class FolderDetailViewModel @Inject constructor(
                     heroSectionEnabled = false,
                     isLoading = anyLoading,
                     homeLayout = s.homeLayout,
+                    homeImdbRatingsVisibility = s.homeImdbRatingsVisibility,
                     posterLabelsEnabled = s.posterLabelsEnabled,
                     modernLandscapePostersEnabled = s.modernLandscapePostersEnabled,
                     modernHeroFullScreenBackdropEnabled = s.modernHeroFullScreenBackdropEnabled,
@@ -555,7 +598,8 @@ class FolderDetailViewModel @Inject constructor(
                     hideUnreleasedContent = s.hideUnreleasedContent,
                     showFullReleaseDate = s.showFullReleaseDate,
                     movieWatchedStatus = s.movieWatchedStatus,
-                    heroEnrichmentEnabled = false
+                    heroEnrichmentEnabled = false,
+                    classicFocusGradientEnabled = s.classicFocusGradientEnabled
                 )
                 s.copy(followLayoutHomeState = homeState)
             }
@@ -619,7 +663,9 @@ class FolderDetailViewModel @Inject constructor(
                 }
             }
             val tab = _uiState.value.tabs.getOrNull(tabIndex)
-            val catalogName = catalog?.name ?: tab?.label?.takeIf { it != tab?.typeLabel } ?: source.catalogId
+            val catalogName = catalog?.name
+                ?: tab?.label?.takeIf { it.isNotBlank() }
+                ?: source.catalogId
 
             val supportsSkip = catalog?.supportsExtra("skip") ?: false
             val skipStep = catalog?.skipStep() ?: 100
@@ -876,7 +922,10 @@ class FolderDetailViewModel @Inject constructor(
                         _uiState.update { s ->
                             val tabs = s.tabs.toMutableList()
                             val currentRow = tabs.getOrNull(tabIndex)?.catalogRow
-                            val filteredData = result.data.filteredForRelease(s.hideUnreleasedContent)
+                            val filteredData = result.data.filteredForRelease(
+                                hideUnreleased = s.hideUnreleasedContent,
+                                treatMissingDateAsUnreleased = true
+                            )
                             val row = if (append && currentRow != null) {
                                 val existingIds = currentRow.items.map { "${it.apiType}:${it.id}" }.toHashSet()
                                 val newItems = filteredData.items.filter { "${it.apiType}:${it.id}" !in existingIds }
@@ -934,7 +983,10 @@ class FolderDetailViewModel @Inject constructor(
                         _uiState.update { s ->
                             val tabs = s.tabs.toMutableList()
                             val currentRow = tabs.getOrNull(tabIndex)?.catalogRow
-                            val filteredData = result.data.filteredForRelease(s.hideUnreleasedContent)
+                            val filteredData = result.data.filteredForRelease(
+                                hideUnreleased = s.hideUnreleasedContent,
+                                treatMissingDateAsUnreleased = true
+                            )
                             val row = if (append && currentRow != null) {
                                 val existingIds = currentRow.items.map { "${it.apiType}:${it.id}" }.toHashSet()
                                 val newItems = filteredData.items.filter { "${it.apiType}:${it.id}" !in existingIds }
@@ -1069,6 +1121,17 @@ class FolderDetailViewModel @Inject constructor(
         enrichFocusJob?.cancel()
         enrichFocusJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             kotlinx.coroutines.delay(350)
+
+            // Background-prefetch meta from addons so detail screen opens instantly.
+            if (backgroundMetaPrefetchedIds.add(item.id)) {
+                viewModelScope.launch {
+                    metaRepository.getMetaFromAllAddons(
+                        type = item.apiType,
+                        id = item.id
+                    ).first { it !is com.nuvio.tv.core.network.NetworkResult.Loading }
+                }
+            }
+
             val tmdbSettings = tmdbSettingsDataStore.settings.first()
             val homeLayout = _uiState.value.homeLayout
             val tmdbEnabled = tmdbSettings.enabled &&
@@ -1505,10 +1568,22 @@ class FolderDetailViewModel @Inject constructor(
 
 }
 
-/** Drops unreleased items from a freshly-loaded row when the user toggle is on. */
-private fun CatalogRow.filteredForRelease(hideUnreleased: Boolean): CatalogRow {
+/**
+ * Drops unreleased items from a freshly-loaded row when the user toggle is on.
+ * [treatMissingDateAsUnreleased] additionally drops items that have no release
+ * information at all — used for TMDB- and Trakt-resolved rows, where a missing
+ * release date means the title is unannounced (#2793). Addon rows keep the
+ * lenient behavior because sparse addon metadata often omits dates for
+ * released content.
+ */
+private fun CatalogRow.filteredForRelease(
+    hideUnreleased: Boolean,
+    treatMissingDateAsUnreleased: Boolean = false
+): CatalogRow {
     if (!hideUnreleased) return this
     val today = java.time.LocalDate.now()
-    val filtered = items.filterNot { it.isUnreleased(today) }
+    val filtered = items.filterNot { item ->
+        item.isUnreleased(today) || (treatMissingDateAsUnreleased && item.hasNoReleaseInfo())
+    }
     return if (filtered.size == items.size) this else copy(items = filtered)
 }

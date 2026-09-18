@@ -2,13 +2,11 @@ package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.data.local.NextEpisodeThresholdMode
 import com.nuvio.tv.data.repository.SkipInterval
+import com.nuvio.tv.core.util.isEpisodeReleaseAired
+import com.nuvio.tv.core.util.parseEpisodeReleaseLocalDate
 import com.nuvio.tv.domain.model.Video
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
 
 object PlayerNextEpisodeRules {
     fun resolveNextEpisode(
@@ -46,6 +44,9 @@ object PlayerNextEpisodeRules {
         thresholdPercent: Float,
         thresholdMinutesBeforeEnd: Float
     ): Boolean {
+        // A duration below the current position is not a valid end-of-video signal.
+        if (durationMs > 0L && positionMs > durationMs + END_OF_VIDEO_EPSILON_MS) return false
+
         val outroSegments = skipIntervals.filter { it.type in OUTRO_SEGMENT_TYPES }
 
         if (outroSegments.isNotEmpty()) {
@@ -98,18 +99,32 @@ object PlayerNextEpisodeRules {
         }
     }
 
-    fun parseEpisodeReleaseDate(raw: String?): LocalDate? {
-        val value = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    /** True when a reading is clearly before the end and outside the next-episode window. */
+    fun isAwayFromEnd(
+        positionMs: Long,
+        durationMs: Long,
+        skipIntervals: List<SkipInterval>,
+        thresholdMode: NextEpisodeThresholdMode,
+        thresholdPercent: Float,
+        thresholdMinutesBeforeEnd: Float
+    ): Boolean =
+        durationMs > 0L &&
+            positionMs < durationMs - NEAR_END_MS &&
+            !shouldShowNextEpisodeCard(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                skipIntervals = skipIntervals,
+                thresholdMode = thresholdMode,
+                thresholdPercent = thresholdPercent,
+                thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd
+            )
 
-        return runCatching { LocalDate.parse(value) }.getOrNull()
-            ?: runCatching { Instant.parse(value).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()
-            ?: runCatching { OffsetDateTime.parse(value).toLocalDate() }.getOrNull()
-            ?: runCatching { LocalDateTime.parse(value).toLocalDate() }.getOrNull()
+    fun parseEpisodeReleaseDate(raw: String?): LocalDate? {
+        return parseEpisodeReleaseLocalDate(raw)
     }
 
     fun hasEpisodeAired(raw: String?, clock: Clock = Clock.systemDefaultZone()): Boolean {
-        val releasedDate = parseEpisodeReleaseDate(raw) ?: return true
-        return !releasedDate.isAfter(LocalDate.now(clock))
+        return isEpisodeReleaseAired(raw, clock) ?: true
     }
 
     val OUTRO_SEGMENT_TYPES = setOf("outro", "ed", "mixed-ed")
@@ -117,4 +132,7 @@ object PlayerNextEpisodeRules {
     const val POST_OUTRO_AUTOPLAY_GAP_MS = 5_000L
 
     const val END_OF_VIDEO_EPSILON_MS = 1_000L
+
+    /** How close to the duration MPV treats as the end of the file. */
+    const val NEAR_END_MS = 500L
 }

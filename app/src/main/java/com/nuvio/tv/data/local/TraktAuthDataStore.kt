@@ -15,11 +15,15 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val TRAKT_ACCESS_TOKEN_MAX_LIFETIME_SECONDS = 86_400
+private const val TRAKT_LEGACY_FORCED_TOKEN_LIFETIME_SECONDS = 86_400
+private const val TRAKT_DOCUMENTED_TOKEN_LIFETIME_SECONDS = 604_800
 
 internal fun normalizeTraktTokenLifetimeSeconds(expiresIn: Int): Int {
-    if (expiresIn <= 0) return TRAKT_ACCESS_TOKEN_MAX_LIFETIME_SECONDS
-    return expiresIn.coerceAtMost(TRAKT_ACCESS_TOKEN_MAX_LIFETIME_SECONDS)
+    return if (expiresIn == TRAKT_LEGACY_FORCED_TOKEN_LIFETIME_SECONDS) {
+        TRAKT_DOCUMENTED_TOKEN_LIFETIME_SECONDS
+    } else {
+        expiresIn
+    }
 }
 
 data class TraktAuthState(
@@ -91,9 +95,12 @@ class TraktAuthDataStore @Inject constructor(
 
     val isEffectivelyAuthenticated: Flow<Boolean> = isAuthenticated
 
-    /** Direct read of auth state for the current active profile, bypassing flatMapLatest. */
     suspend fun getCurrentState(): TraktAuthState {
-        val prefs = store().data.first()
+        return getCurrentState(profileManager.activeProfileId.value)
+    }
+
+    suspend fun getCurrentState(profileId: Int): TraktAuthState {
+        val prefs = store(profileId).data.first()
         return TraktAuthState(
             accessToken = prefs[accessTokenKey],
             refreshToken = prefs[refreshTokenKey],

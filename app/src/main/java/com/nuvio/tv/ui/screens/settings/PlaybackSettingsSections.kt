@@ -66,7 +66,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import com.nuvio.tv.data.local.AddonSubtitleStartupMode
 import com.nuvio.tv.data.local.AudioOutputChannels
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.local.Dv7HandlingMode
@@ -119,7 +118,6 @@ internal fun PlaybackSettingsSections(
     onShowMpvHardwareDecodeModeDialog: () -> Unit,
     onShowLanguageDialog: () -> Unit,
     onShowSecondaryLanguageDialog: () -> Unit,
-    onShowSubtitleStartupModeDialog: () -> Unit,
     onShowTextColorDialog: () -> Unit,
     onShowBackgroundColorDialog: () -> Unit,
     onShowOutlineColorDialog: () -> Unit,
@@ -130,7 +128,10 @@ internal fun PlaybackSettingsSections(
     onShowStreamRegexDialog: () -> Unit,
     onShowNextEpisodeThresholdModeDialog: () -> Unit,
     onShowReuseLastLinkCacheDialog: () -> Unit,
+    onSetPostPlayRecommendationsEnabled: (Boolean) -> Unit,
+    onSetPostPlayMovieThresholdPercent: (Int) -> Unit,
     onSetStreamAutoPlayNextEpisodeEnabled: (Boolean) -> Unit,
+    onSetStreamAutoPlayNextEpisodeFallbackEnabled: (Boolean) -> Unit,
     onSetStreamAutoPlayPreferBingeGroupForNextEpisode: (Boolean) -> Unit,
     onSetStreamAutoPlayReuseBingeGroup: (Boolean) -> Unit,
     onSetAutoSwitchInternalPlayerOnError: (Boolean) -> Unit,
@@ -164,11 +165,13 @@ internal fun PlaybackSettingsSections(
     onSetDv5ToDv81Enabled: (Boolean) -> Unit,
     onSetDv7ToDv81PreserveMappingEnabled: (Boolean) -> Unit,
     onSetStripHdr10PlusSei: (Boolean) -> Unit,
+    onSetMpvHi10pGnextSoftwareFallbackEnabled: (Boolean) -> Unit,
     onSetSubtitleSize: (Int) -> Unit,
     onSetSubtitleVerticalOffset: (Int) -> Unit,
     onSetSubtitleBold: (Boolean) -> Unit,
     onSetUseForcedSubtitles: (Boolean) -> Unit,
     onSetSubtitleShowOnlyPreferredLanguages: (Boolean) -> Unit,
+    onSetSubtitleStripSdh: (Boolean) -> Unit,
     onSetSubtitleOutlineEnabled: (Boolean) -> Unit,
     onSetUseLibass: (Boolean) -> Unit,
     onSetLibassRenderType: (LibassRenderType) -> Unit,
@@ -181,7 +184,7 @@ internal fun PlaybackSettingsSections(
     onSetParallelNetworkEnabled: (Boolean) -> Unit,
     onSetUseParallelConnections: (Boolean) -> Unit,
     onSetParallelConnectionCount: (Int) -> Unit,
-    onSetParallelChunkSizeMb: (Int) -> Unit,
+    onSetParallelChunkSizeKb: (Int) -> Unit,
     onSetBufferMinBufferMs: (Int) -> Unit,
     onSetBufferMaxBufferMs: (Int) -> Unit,
     onSetBufferForPlaybackMs: (Int) -> Unit,
@@ -452,6 +455,21 @@ internal fun PlaybackSettingsSections(
                         enabled = !generalUi.isExternalPlayer && playerSettings.skipIntroEnabled
                     )
                 }
+
+                item(key = "general_auto_skip_movie_credits") {
+                    ToggleSettingsItem(
+                        icon = Icons.Default.SkipNext,
+                        title = stringResource(R.string.auto_skip_movie_credits),
+                        subtitle = stringResource(R.string.auto_skip_movie_credits_sub),
+                        isChecked = AutoSkipSegmentType.MOVIE_CREDITS in playerSettings.autoSkipSegmentTypes,
+                        onCheckedChange = {
+                            onSetAutoSkipSegmentTypeEnabled(AutoSkipSegmentType.MOVIE_CREDITS, it)
+                        },
+                        onFocused = { focusedSection = PlaybackSection.GENERAL },
+                        enabled = !generalUi.isExternalPlayer && playerSettings.skipIntroEnabled
+                    )
+                }
+
             }
 
         }
@@ -531,7 +549,10 @@ internal fun PlaybackSettingsSections(
                 onShowRegexDialog = onShowStreamRegexDialog,
                 onShowNextEpisodeThresholdModeDialog = onShowNextEpisodeThresholdModeDialog,
                 onShowReuseLastLinkCacheDialog = onShowReuseLastLinkCacheDialog,
+                onSetPostPlayRecommendationsEnabled = onSetPostPlayRecommendationsEnabled,
+                onSetPostPlayMovieThresholdPercent = onSetPostPlayMovieThresholdPercent,
                 onSetStreamAutoPlayNextEpisodeEnabled = onSetStreamAutoPlayNextEpisodeEnabled,
+                onSetStreamAutoPlayNextEpisodeFallbackEnabled = onSetStreamAutoPlayNextEpisodeFallbackEnabled,
                 onSetStreamAutoPlayPreferBingeGroupForNextEpisode = onSetStreamAutoPlayPreferBingeGroupForNextEpisode,
                 onSetStreamAutoPlayReuseBingeGroup = onSetStreamAutoPlayReuseBingeGroup,
                 onSetNextEpisodeThresholdPercent = onSetNextEpisodeThresholdPercent,
@@ -581,6 +602,8 @@ internal fun PlaybackSettingsSections(
                 onSetDv5ToDv81Enabled = onSetDv5ToDv81Enabled,
                 onSetDv7ToDv81PreserveMappingEnabled = onSetDv7ToDv81PreserveMappingEnabled,
                 onSetStripHdr10PlusSei = onSetStripHdr10PlusSei,
+                onSetMpvHi10pGnextSoftwareFallbackEnabled =
+                    onSetMpvHi10pGnextSoftwareFallbackEnabled,
                 onItemFocused = { focusedSection = PlaybackSection.AUDIO_TRAILER },
                 enabled = !generalUi.isExternalPlayer,
                 videoExtraItems = {
@@ -641,7 +664,6 @@ internal fun PlaybackSettingsSections(
                 playerSettings = playerSettings,
                 onShowLanguageDialog = onShowLanguageDialog,
                 onShowSecondaryLanguageDialog = onShowSecondaryLanguageDialog,
-                onShowSubtitleStartupModeDialog = onShowSubtitleStartupModeDialog,
                 onShowTextColorDialog = onShowTextColorDialog,
                 onShowBackgroundColorDialog = onShowBackgroundColorDialog,
                 onShowOutlineColorDialog = onShowOutlineColorDialog,
@@ -650,6 +672,7 @@ internal fun PlaybackSettingsSections(
                 onSetSubtitleBold = onSetSubtitleBold,
                 onSetUseForcedSubtitles = onSetUseForcedSubtitles,
                 onSetSubtitleShowOnlyPreferredLanguages = onSetSubtitleShowOnlyPreferredLanguages,
+                onSetSubtitleStripSdh = onSetSubtitleStripSdh,
                 onSetSubtitleOutlineEnabled = onSetSubtitleOutlineEnabled,
                 onSetUseLibass = onSetUseLibass,
                 onSetLibassRenderType = onSetLibassRenderType,
@@ -720,7 +743,7 @@ internal fun PlaybackSettingsSections(
                     onResetToDefaults = onResetBufferSettingsToDefaults,
                     onSetUseParallelConnections = onSetUseParallelConnections,
                     onSetParallelConnectionCount = onSetParallelConnectionCount,
-                    onSetParallelChunkSizeMb = onSetParallelChunkSizeMb,
+                    onSetParallelChunkSizeKb = onSetParallelChunkSizeKb,
                     onSetEnableHttp2 = onSetEnableHttp2,
                     onResetNetworkToDefaults = onResetNetworkSettingsToDefaults
                 )
@@ -961,7 +984,7 @@ private fun AfrCapabilityDisableButton(
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = RoundedCornerShape(SettingsPillRadius)
             )
         ),
@@ -993,7 +1016,6 @@ internal fun PlaybackSettingsDialogsHost(
     showInternalPlayerEngineDialog: Boolean,
     showLanguageDialog: Boolean,
     showSecondaryLanguageDialog: Boolean,
-    showSubtitleStartupModeDialog: Boolean,
     showTextColorDialog: Boolean,
     showBackgroundColorDialog: Boolean,
     showOutlineColorDialog: Boolean,
@@ -1016,7 +1038,6 @@ internal fun PlaybackSettingsDialogsHost(
     onDismissInternalPlayerEngineDialog: () -> Unit,
     onSetSubtitlePreferredLanguage: (String?) -> Unit,
     onSetSubtitleSecondaryLanguage: (String?) -> Unit,
-    onSetAddonSubtitleStartupMode: (AddonSubtitleStartupMode) -> Unit,
     onSetSubtitleTextColor: (Color) -> Unit,
     onSetSubtitleBackgroundColor: (Color) -> Unit,
     onSetSubtitleOutlineColor: (Color) -> Unit,
@@ -1035,7 +1056,6 @@ internal fun PlaybackSettingsDialogsHost(
     onSetReuseLastLinkCacheHours: (Int) -> Unit,
     onDismissLanguageDialog: () -> Unit,
     onDismissSecondaryLanguageDialog: () -> Unit,
-    onDismissSubtitleStartupModeDialog: () -> Unit,
     onDismissTextColorDialog: () -> Unit,
     onDismissBackgroundColorDialog: () -> Unit,
     onDismissOutlineColorDialog: () -> Unit,
@@ -1078,20 +1098,17 @@ internal fun PlaybackSettingsDialogsHost(
     SubtitleSettingsDialogs(
         showLanguageDialog = showLanguageDialog,
         showSecondaryLanguageDialog = showSecondaryLanguageDialog,
-        showSubtitleStartupModeDialog = showSubtitleStartupModeDialog,
         showTextColorDialog = showTextColorDialog,
         showBackgroundColorDialog = showBackgroundColorDialog,
         showOutlineColorDialog = showOutlineColorDialog,
         playerSettings = playerSettings,
         onSetPreferredLanguage = onSetSubtitlePreferredLanguage,
         onSetSecondaryLanguage = onSetSubtitleSecondaryLanguage,
-        onSetAddonSubtitleStartupMode = onSetAddonSubtitleStartupMode,
         onSetTextColor = onSetSubtitleTextColor,
         onSetBackgroundColor = onSetSubtitleBackgroundColor,
         onSetOutlineColor = onSetSubtitleOutlineColor,
         onDismissLanguageDialog = onDismissLanguageDialog,
         onDismissSecondaryLanguageDialog = onDismissSecondaryLanguageDialog,
-        onDismissSubtitleStartupModeDialog = onDismissSubtitleStartupModeDialog,
         onDismissTextColorDialog = onDismissTextColorDialog,
         onDismissBackgroundColorDialog = onDismissBackgroundColorDialog,
         onDismissOutlineColorDialog = onDismissOutlineColorDialog

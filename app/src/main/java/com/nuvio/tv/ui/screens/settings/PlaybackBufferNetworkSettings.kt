@@ -62,7 +62,7 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
     onSetVodCacheSizeMb: (Int) -> Unit,
     onSetUseParallelConnections: (Boolean) -> Unit,
     onSetParallelConnectionCount: (Int) -> Unit,
-    onSetParallelChunkSizeMb: (Int) -> Unit,
+    onSetParallelChunkSizeKb: (Int) -> Unit,
     onSetEnableHttp2: (Boolean) -> Unit,
     onResetNetworkToDefaults: () -> Unit
 ) {
@@ -246,8 +246,13 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
 
         item(key = "buffer_net_target_size") {
             val budgetManaged = playerSettings.bufferBudgetManaged
-            val parallelOverheadMb = if (playerSettings.parallelNetworkEnabled && playerSettings.useParallelConnections)
-                MemoryBudget.parallelOverheadMb(playerSettings.parallelConnectionCount, playerSettings.parallelChunkSizeMb) else 0
+            val parallelActive = playerSettings.parallelNetworkEnabled && playerSettings.useParallelConnections
+            val chunkMb = Math.ceil(playerSettings.parallelChunkSizeKb / 1024.0).toInt().coerceAtMost(MemoryBudget.tierMaxChunkMb)
+            val parallelOverheadMb = if (parallelActive) {
+                MemoryBudget.parallelOverheadMb(playerSettings.parallelConnectionCount, chunkMb)
+            } else {
+                0
+            }
             val context = LocalContext.current
             val safeMaxMb = if (playerSettings.nuvioPerformanceModeEnabled) {
                 NuvioExoPlayerPerformanceHelper.getSafeNativeMemoryLimitMb(context)
@@ -274,12 +279,18 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
                     .effectiveBufferMb(playerSettings.bufferSettings.targetBufferSizeMb)
                     .coerceIn(minBufferSizeMb, maxBufferSizeMb)
             }
+            val effectiveExoMb = (bufferSizeMb - parallelOverheadMb).coerceAtLeast(MemoryBudget.MIN_BUFFER_MB)
+            val displayValueText = if (playerSettings.nuvioPerformanceModeEnabled && parallelActive && parallelOverheadMb > 0) {
+                "$effectiveExoMb+$parallelOverheadMb MB"
+            } else {
+                "$bufferSizeMb MB"
+            }
             SliderSettingsItem(
                 icon = Icons.Default.Storage,
                 title = stringResource(R.string.playback_buffer_target),
                 subtitle = stringResource(R.string.playback_buffer_target_sub),
                 value = bufferSizeMb,
-                valueText = "$bufferSizeMb MB",
+                valueText = displayValueText,
                 minValue = minBufferSizeMb,
                 maxValue = maxBufferSizeMb,
                 step = MemoryBudget.BUFFER_STEP_MB,
@@ -436,7 +447,7 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
                 ),
                 border = ButtonDefaults.border(
                     focusedBorder = Border(
-                        border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.FocusRing),
+                        border = NuvioTheme.focusRing.border(NuvioTheme.spacing.hairline),
                         shape = RoundedCornerShape(10.dp)
                     )
                 )
@@ -500,21 +511,41 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
             item(key = "buffer_net_parallel_chunk_size") {
                 val effectiveBufferMb = MemoryBudget.effectiveBufferMb(playerSettings.bufferSettings.targetBufferSizeMb)
                 val maxChunkSizeMb = if (playerSettings.nuvioPerformanceModeEnabled) {
-                    MemoryBudget.MAX_CHUNK_MB
+                    MemoryBudget.tierMaxChunkMb
                 } else {
                     MemoryBudget.maxChunkMb(effectiveBufferMb, playerSettings.parallelConnectionCount)
                 }
-                val chunkSizeMb = playerSettings.parallelChunkSizeMb.coerceAtMost(maxChunkSizeMb)
+                val chunkSizes = listOf(
+                    256 to "256 KB",
+                    512 to "512 KB",
+                    1024 to "1 MB",
+                    2048 to "2 MB",
+                    4096 to "4 MB",
+                    8192 to "8 MB",
+                    16384 to "16 MB",
+                    24576 to "24 MB",
+                    32768 to "32 MB",
+                    49152 to "48 MB",
+                    65536 to "64 MB",
+                    98304 to "96 MB",
+                    131072 to "128 MB"
+                ).filter { it.first <= maxChunkSizeMb * 1024 }
+
+                val currentKb = playerSettings.parallelChunkSizeKb
+                val currentIndex = chunkSizes.indexOfFirst { it.first == currentKb }.coerceAtLeast(0)
+
                 SliderSettingsItem(
                     icon = Icons.Default.Storage,
                     title = stringResource(R.string.playback_net_chunk_size),
                     subtitle = stringResource(R.string.playback_net_chunk_size_sub),
-                    value = chunkSizeMb,
-                    valueText = "$chunkSizeMb MB",
-                    minValue = MemoryBudget.MIN_CHUNK_MB,
-                    maxValue = maxChunkSizeMb,
-                    step = 8,
-                    onValueChange = onSetParallelChunkSizeMb
+                    value = currentIndex,
+                    valueText = chunkSizes.getOrNull(currentIndex)?.second ?: "${currentKb / 1024} MB",
+                    minValue = 0,
+                    maxValue = (chunkSizes.size - 1).coerceAtLeast(0),
+                    step = 1,
+                    onValueChange = { index ->
+                        chunkSizes.getOrNull(index)?.let { onSetParallelChunkSizeKb(it.first) }
+                    }
                 )
             }
         }
@@ -529,7 +560,7 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
                 ),
                 border = ButtonDefaults.border(
                     focusedBorder = Border(
-                        border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.FocusRing),
+                        border = NuvioTheme.focusRing.border(NuvioTheme.spacing.hairline),
                         shape = RoundedCornerShape(10.dp)
                     )
                 )

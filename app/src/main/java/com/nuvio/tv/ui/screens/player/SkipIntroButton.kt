@@ -49,19 +49,20 @@ import androidx.tv.material3.Text
 import androidx.compose.ui.res.stringResource
 import com.nuvio.tv.R
 import com.nuvio.tv.data.repository.SkipInterval
-import kotlinx.coroutines.delay
 
 /**
  * Skip Intro/Outro/Recap button for the player.
  * Appears at bottom-left when playback is within a skip interval.
- * Auto-hides after 15 seconds. Focusable for D-pad navigation.
+ * Auto-hides after 10 seconds. Focusable for D-pad navigation.
  */
 @Composable
 fun SkipIntroButton(
     interval: SkipInterval?,
     dismissed: Boolean,
     controlsVisible: Boolean,
+    targetsPostCredits: Boolean = false,
     suppressFocus: Boolean = false,
+    canFocus: Boolean = true,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
     onHideControls: (() -> Unit)? = null,
@@ -70,12 +71,14 @@ fun SkipIntroButton(
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
     upFocusRequester: FocusRequester? = null,
+    rightFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
 
     var lastType by remember { mutableStateOf(interval?.type) }
     if (interval != null) lastType = interval.type
-    val shouldShow = interval != null && (!dismissed || controlsVisible)
+    val hasActiveInterval = interval != null
+    val shouldShow = hasActiveInterval && (!dismissed || controlsVisible)
 
     var autoHidden by remember { mutableStateOf(false) }
     var manuallyDismissed by remember { mutableStateOf(false) }
@@ -106,7 +109,7 @@ fun SkipIntroButton(
     LaunchedEffect(shouldShow, autoHidden, controlsVisible) {
         if (shouldShow && !autoHidden && !controlsVisible) {
             progress.animateTo(1f, animationSpec = tween(
-                durationMillis = ((1f - progress.value) * 10000).toInt().coerceAtLeast(1),
+                durationMillis = skipIntroAutoHideRemainingMs(progress.value),
                 easing = LinearEasing
             ))
             autoHidden = true
@@ -121,14 +124,20 @@ fun SkipIntroButton(
         }
     }
 
-    val isVisible = shouldShow && (!autoHidden || controlsVisible)
+    val isVisible = isSkipIntroButtonVisible(
+        hasActiveInterval = hasActiveInterval,
+        dismissed = dismissed,
+        controlsVisible = controlsVisible,
+        autoHidden = autoHidden,
+    )
 
     LaunchedEffect(isVisible) { onVisibilityChanged(isVisible) }
 
     // Request focus when becoming visible or when controls hide
-    // but not when the next episode card has priority
-    LaunchedEffect(isVisible, controlsVisible, suppressFocus) {
-        if (isVisible && !controlsVisible && !suppressFocus) {
+    // but not when the next episode card has priority, and not when focus is
+    // reserved for an overlay (e.g. subtitle selection — #2874).
+    LaunchedEffect(isVisible, controlsVisible, suppressFocus, canFocus) {
+        if (isVisible && !controlsVisible && !suppressFocus && canFocus) {
             try { activeFocusRequester.requestFocus() } catch (_: Exception) {}
         }
     }
@@ -143,17 +152,14 @@ fun SkipIntroButton(
             onClick = onSkip,
             modifier = Modifier
                 .focusRequester(activeFocusRequester)
-                .then(
-                    if (downFocusRequester != null || upFocusRequester != null) {
-                        Modifier.focusProperties {
-                            downFocusRequester?.let { down = it }
-                            upFocusRequester?.let { up = it }
-                        }
-                    } else {
-                        Modifier
-                    }
-                )
+                .focusProperties {
+                    this.canFocus = canFocus
+                    downFocusRequester?.let { down = it }
+                    upFocusRequester?.let { up = it }
+                    rightFocusRequester?.let { right = it }
+                }
                 .onPreviewKeyEvent { keyEvent ->
+                    if (!canFocus) return@onPreviewKeyEvent false
                     if (keyEvent.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
                         when (keyEvent.nativeKeyEvent.keyCode) {
                             android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
@@ -206,7 +212,7 @@ fun SkipIntroButton(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = getSkipLabel(lastType),
+                        text = getSkipLabel(lastType, targetsPostCredits),
                         color = if (isFocused) NuvioTheme.colors.OnSecondary else Color.White,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(start = NuvioTheme.spacing.sm)
@@ -232,9 +238,11 @@ fun SkipIntroButton(
 }
 
 @Composable
-private fun getSkipLabel(type: String?): String = when (type?.trim()?.lowercase()) {
+private fun getSkipLabel(type: String?, targetsPostCredits: Boolean): String = when (type?.trim()?.lowercase()) {
     "op", "opening", "mixed-op", "intro" -> stringResource(R.string.skip_intro)
-    "ed", "ending", "mixed-ed", "outro", "credits" -> stringResource(R.string.skip_ending)
+    "ed", "ending", "mixed-ed", "outro", "credits" ->
+        stringResource(if (targetsPostCredits) R.string.skip_to_post_credits else R.string.skip_ending)
+    "movie-credits" -> stringResource(if (targetsPostCredits) R.string.skip_to_post_credits else R.string.skip_movie_credits)
     "recap" -> stringResource(R.string.skip_recap)
     else -> stringResource(R.string.skip_generic)
 }

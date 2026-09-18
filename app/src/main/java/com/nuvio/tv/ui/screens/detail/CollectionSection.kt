@@ -18,7 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -31,6 +33,7 @@ import com.nuvio.tv.ui.components.PosterCardStyle
 fun CollectionSection(
     items: List<MetaPreview>,
     title: String? = null,
+    posterCardCornerRadius: Dp = NuvioTheme.spacing.md,
     upFocusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
     sectionFocusRequester: FocusRequester? = null,
@@ -39,7 +42,8 @@ fun CollectionSection(
     onRestoreFocusHandled: () -> Unit = {},
     onItemFocused: (MetaPreview) -> Unit = {},
     onItemClick: (MetaPreview) -> Unit,
-    onItemLongPress: (MetaPreview) -> Unit = {}
+    onItemLongPress: (MetaPreview) -> Unit = {},
+    isItemWatched: (MetaPreview) -> Boolean = { false }
 ) {
     if (items.isEmpty()) return
 
@@ -58,11 +62,11 @@ fun CollectionSection(
         restoreFocusRequester.requestFocusAfterFrames()
     }
 
-    val landscapeStyle = remember {
+    val landscapeStyle = remember(posterCardCornerRadius) {
         PosterCardStyle(
             width = 260.dp,
             height = 146.dp,
-            cornerRadius = NuvioTheme.spacing.md,
+            cornerRadius = posterCardCornerRadius,
             focusedBorderWidth = NuvioTheme.spacing.xxs,
             focusedScale = 1.02f
         )
@@ -86,7 +90,8 @@ fun CollectionSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (sectionFocusRequester != null) Modifier.focusRequester(sectionFocusRequester) else Modifier)
-                .focusRestorer { firstItemFocusRequester },
+                .focusRestorer { firstItemFocusRequester }
+                .focusGroup(),
             contentPadding = PaddingValues(horizontal = NuvioTheme.spacing.xxxl, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
         ) {
@@ -110,6 +115,7 @@ fun CollectionSection(
                         posterCardStyle = landscapeStyle,
                         showLabel = true,
                         imageCrossfade = true,
+                        isWatched = isItemWatched(item),
                         focusRequester = focusRequester,
                         upFocusRequester = upFocusRequester,
                         downFocusRequester = downFocusRequester,

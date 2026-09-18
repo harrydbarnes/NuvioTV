@@ -13,8 +13,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +21,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,7 +57,6 @@ import androidx.tv.material3.IconButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import android.util.Log
 import com.nuvio.tv.R
@@ -71,6 +66,8 @@ import com.nuvio.tv.domain.model.MDBListRatings
 import com.nuvio.tv.domain.model.Video
 import com.nuvio.tv.domain.model.NextToWatch
 import com.nuvio.tv.ui.components.ImdbRatingSourceLabel
+import com.nuvio.tv.ui.components.MDBListRatingsRow
+import com.nuvio.tv.ui.components.SynopsisDescription
 import com.nuvio.tv.ui.theme.NuvioTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -80,8 +77,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.painter.Painter
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.nuvio.tv.ui.util.localizedGenreLabel
 import com.nuvio.tv.ui.util.rememberLongPressKeyTracker
 import java.util.Locale
+
+private const val MAX_VISIBLE_HERO_GENRES = 6
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -90,6 +90,7 @@ fun HeroContentSection(
     nextEpisode: Video?,
     nextToWatch: NextToWatch?,
     onPlayClick: () -> Unit,
+    isPlayEnabled: Boolean = true,
     onPlayLongPress: (() -> Unit)? = null,
     isInLibrary: Boolean,
     onToggleLibrary: () -> Unit,
@@ -177,7 +178,9 @@ fun HeroContentSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(animationSpec = tween(600))
+                .animateContentSize(
+                    animationSpec = tween(600)
+                )
                 .padding(start = NuvioTheme.spacing.xxxl, end = NuvioTheme.spacing.xxxl, bottom = NuvioTheme.spacing.lg),
             verticalArrangement = Arrangement.Bottom
         ) {
@@ -236,12 +239,8 @@ fun HeroContentSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         PlayButton(
-                            text = nextToWatch?.displayText ?: when {
-                                nextEpisode != null && nextEpisode.season != null && nextEpisode.episode != null ->
-                                    stringResource(R.string.hero_play_episode, nextEpisode.season, nextEpisode.episode)
-                                nextEpisode != null -> stringResource(R.string.hero_play)
-                                else -> stringResource(R.string.hero_play)
-                            },
+                            text = if (isPlayEnabled) nextToWatch?.displayText else stringResource(R.string.playback_unavailable),
+                            enabled = isPlayEnabled,
                             onClick = onPlayClick,
                             onLongPress = onPlayLongPress,
                             focusRequester = playButtonFocusRequester,
@@ -316,72 +315,16 @@ fun HeroContentSection(
                         Spacer(modifier = Modifier.height(14.dp))
                     }
 
-                    // Series/movie description (not the episode one). Clamp it so the meta row
-                    // below stays on-screen (the hero is a fixed 540dp = full height on a 1080p
-                    // TV). When the synopsis is long enough to be truncated it becomes focusable;
-                    // pressing OK opens the full, scrollable text overlay.
                     meta.description?.let { description ->
-                        var descriptionFocused by remember { mutableStateOf(false) }
-                        var descriptionTruncated by remember(description) { mutableStateOf(false) }
-                        val descriptionInteraction = remember { MutableInteractionSource() }
-                        // Inset of the focus highlight; offset back by the same amount so the text
-                        // stays left-aligned with the rest of the hero while the highlight gets
-                        // even padding on all sides.
-                        val highlightInset = 12.dp
-
-                        Column(
+                        SynopsisDescription(
+                            description = description,
+                            onShowFullDescription = onShowFullDescription,
+                            upFocusRequester = playButtonFocusRequester,
+                            onFocused = onHeroActionFocused,
                             modifier = Modifier
                                 .fillMaxWidth(0.6f)
                                 .padding(bottom = NuvioTheme.spacing.md)
-                                .then(
-                                    if (descriptionTruncated) {
-                                        Modifier
-                                            .offset(x = -highlightInset)
-                                            .onFocusChanged { descriptionFocused = it.isFocused }
-                                            .background(
-                                                color = if (descriptionFocused) {
-                                                    Color.White.copy(alpha = 0.10f)
-                                                } else {
-                                                    Color.Transparent
-                                                },
-                                                shape = RoundedCornerShape(8.dp)
-                                            )
-                                            .clickable(
-                                                interactionSource = descriptionInteraction,
-                                                indication = null,
-                                                onClick = onShowFullDescription
-                                            )
-                                            .padding(horizontal = highlightInset, vertical = 8.dp)
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                        ) {
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = NuvioTheme.colors.TextPrimary,
-                                maxLines = 8,
-                                overflow = TextOverflow.Ellipsis,
-                                onTextLayout = { result ->
-                                    if (result.hasVisualOverflow != descriptionTruncated) {
-                                        descriptionTruncated = result.hasVisualOverflow
-                                    }
-                                }
-                            )
-                            if (descriptionTruncated) {
-                                Text(
-                                    text = stringResource(R.string.hero_synopsis_read_more),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (descriptionFocused) {
-                                        NuvioTheme.colors.TextPrimary
-                                    } else {
-                                        NuvioTheme.extendedColors.textSecondary
-                                    },
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
+                        )
                     }
 
                     MetaInfoRow(
@@ -399,7 +342,8 @@ fun HeroContentSection(
 @OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun PlayButton(
-    text: String,
+    text: String?,
+    enabled: Boolean = true,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)? = null,
     focusRequester: FocusRequester? = null,
@@ -421,6 +365,7 @@ private fun PlayButton(
     )
 
     Button(
+        enabled = enabled,
         onClick = {
             if (longPressTriggered) {
                 longPressTriggered = false
@@ -437,14 +382,14 @@ private fun PlayButton(
             }
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
-                if (onLongPress != null && native.action == AndroidKeyEvent.ACTION_DOWN) {
+                if (enabled && onLongPress != null && native.action == AndroidKeyEvent.ACTION_DOWN) {
                     if (native.keyCode == AndroidKeyEvent.KEYCODE_MENU) {
                         longPressTriggered = true
                         onLongPress()
                         return@onPreviewKeyEvent true
                     }
                 }
-                if (onLongPress != null &&
+                if (enabled && onLongPress != null &&
                     longPressKeyTracker.handle(native, ::isSelectKey) {
                         longPressTriggered = true
                         onLongPress()
@@ -476,7 +421,7 @@ private fun PlayButton(
         ),
         border = ButtonDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = RoundedCornerShape(NuvioTheme.spacing.xxl)
             )
         ),
@@ -484,17 +429,29 @@ private fun PlayButton(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
+            modifier = Modifier.animateContentSize(
+                animationSpec = tween(
+                    durationMillis = NuvioMotion.tokens.durations.fast,
+                    easing = NuvioMotion.tokens.easings.standard
+                )
+            )
         ) {
             Icon(
                 painter = playPainter,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
             )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge
-            )
+            AnimatedVisibility(
+                visible = text != null,
+                enter = fadeIn(animationSpec = tween(NuvioMotion.tokens.durations.fast)),
+                exit = fadeOut(animationSpec = tween(NuvioMotion.tokens.durations.quick))
+            ) {
+                Text(
+                    text = text ?: "",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
         }
     }
 }
@@ -525,7 +482,7 @@ private fun ActionIconButtonPainter(
         ),
         border = IconButtonDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = CircleShape
             )
         ),
@@ -610,7 +567,7 @@ private fun ActionIconButton(
         ),
         border = IconButtonDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                 shape = CircleShape
             )
         ),
@@ -642,7 +599,11 @@ private fun MetaInfoRow(
     tmdbRating: Float? = null
 ) {
     val context = LocalContext.current
-    val genresText = remember(meta.genres) { meta.genres.joinToString(" • ") }
+    val genresText = remember(meta.genres) {
+        meta.genres
+            .take(MAX_VISIBLE_HERO_GENRES)
+            .joinToString(" • ") { localizedGenreLabel(context, it) }
+    }
     val runtimeText = remember(meta.runtime) { meta.runtime?.let { formatRuntime(it) } }
     val yearText = remember(meta.releaseInfo, meta.released, meta.type, showFullReleaseDate) {
         if (showFullReleaseDate && meta.type == ContentType.MOVIE) {
@@ -655,6 +616,7 @@ private fun MetaInfoRow(
         }
     }
     val imdbRating = if (hideImdbRating) null else meta.imdbRating
+    val reserveImdbRatingHeight = meta.imdbRating != null
     val shouldShowImdbRating = imdbRating != null
     val shouldShowTmdbRating = tmdbRating != null
     val tmdbModel = remember(context) {
@@ -701,15 +663,18 @@ private fun MetaInfoRow(
     Column(verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)) {
         // Primary row: Genres, Release, Ratings
         Row(
+            modifier = if (reserveImdbRatingHeight) Modifier.height(30.dp) else Modifier,
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Show all genres
             if (meta.genres.isNotEmpty()) {
                 Text(
                     text = genresText,
+                    modifier = Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.labelLarge,
-                    color = NuvioTheme.extendedColors.textSecondary
+                    color = NuvioTheme.extendedColors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (yearText != null || shouldShowImdbRating || shouldShowTmdbRating) {
                     MetaInfoDivider()
@@ -885,86 +850,6 @@ private fun normalizeCountryLabel(raw: String): String {
         }
 }
 
-@Composable
-private fun MDBListRatingsRow(ratings: MDBListRatings) {
-    val context = LocalContext.current
-    val items = remember(ratings) {
-        listOf(
-            Triple("trakt", com.nuvio.tv.R.raw.mdblist_trakt, ratings.trakt),
-            Triple("imdb", com.nuvio.tv.R.raw.imdb_logo_2016, ratings.imdb),
-            Triple("tmdb", com.nuvio.tv.R.raw.mdblist_tmdb, ratings.tmdb),
-            Triple("letterboxd", com.nuvio.tv.R.raw.mdblist_letterboxd, ratings.letterboxd),
-            Triple("tomatoes", com.nuvio.tv.R.raw.mdblist_tomatoes, ratings.tomatoes)
-        ).filter { it.third != null }
-    }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        items.forEach { (provider, logoRes, rating) ->
-            val resolvedRating = rating ?: return@forEach
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val model = remember(context, logoRes) {
-                    ImageRequest.Builder(context)
-                        .data(logoRes)
-                        .build()
-                }
-                AsyncImage(
-                    model = model,
-                    contentDescription = null,
-                    modifier = Modifier.size(NuvioTheme.spacing.xl),
-                    contentScale = ContentScale.Fit
-                )
-                Text(
-                    text = formatMDBListRating(provider, resolvedRating),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = NuvioTheme.extendedColors.textSecondary
-                )
-            }
-        }
-
-        ratings.audience?.let { rating ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(id = com.nuvio.tv.R.drawable.mdblist_audience),
-                    contentDescription = null,
-                    modifier = Modifier.size(NuvioTheme.spacing.xl)
-                )
-                Text(
-                    text = formatMDBListRating("audience", rating),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = NuvioTheme.extendedColors.textSecondary
-                )
-            }
-        }
-
-        ratings.metacritic?.let { rating ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(
-                    painter = painterResource(id = com.nuvio.tv.R.drawable.mdblist_metacritic),
-                    contentDescription = null,
-                    modifier = Modifier.size(NuvioTheme.spacing.xl)
-                )
-                Text(
-                    text = formatMDBListRating("metacritic", rating),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = NuvioTheme.extendedColors.textSecondary
-                )
-            }
-        }
-    }
-}
-
 private fun isSelectKey(keyCode: Int): Boolean {
     return keyCode == AndroidKeyEvent.KEYCODE_DPAD_CENTER ||
         keyCode == AndroidKeyEvent.KEYCODE_ENTER ||
@@ -975,22 +860,20 @@ private fun isSelectOrMenuKey(keyCode: Int): Boolean {
     return isSelectKey(keyCode) || keyCode == AndroidKeyEvent.KEYCODE_MENU
 }
 
-private fun formatMDBListRating(provider: String, rating: Double): String {
-    return when (provider) {
-        "imdb", "tmdb", "letterboxd" -> String.format("%.1f", rating)
-        else -> {
-            if (rating % 1.0 == 0.0) rating.toInt().toString() else String.format("%.1f", rating)
-        }
-    }
-}
-
 
 private fun formatYearRange(releaseInfo: String?): String? {
     if (releaseInfo.isNullOrBlank()) return null
     return releaseInfo.trim()
 }
 
-private fun formatRuntime(runtime: String): String {
+/**
+ * Null when the runtime is zero or unparseable-as-positive.
+ *
+ * TMDB answers with runtime 0, not null, for a title whose length it does not know yet, so
+ * every branch below could reach the end with a total of zero and render a literal "0m" in the
+ * metadata row. The caller already drops a null.
+ */
+private fun formatRuntime(runtime: String): String? {
     val trimmed = runtime.trim()
     // Already in "Xh Ym" or "Xh" format
     if (trimmed.contains('h') || trimmed.contains('m')) {
@@ -1015,6 +898,7 @@ private fun formatRuntime(runtime: String): String {
     }
     // Plain number (minutes)
     val minutes = trimmed.filter { it.isDigit() }.toIntOrNull() ?: return runtime
+    if (minutes <= 0) return null
     return if (minutes >= 60) {
         val hours = minutes / 60
         val mins = minutes % 60

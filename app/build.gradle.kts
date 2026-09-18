@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -6,6 +6,7 @@
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.sentry.android.gradle)
 }
 
 import java.io.File
@@ -19,13 +20,6 @@ fun parseBooleanProperty(value: String?): Boolean {
 fun resolveProperty(dev: Properties, local: Properties, key: String, fallback: String = ""): String {
     return dev.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: local.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
-        ?: System.getenv(key)?.trim()?.takeIf { it.isNotBlank() }
-        ?: fallback
-}
-
-fun resolveLocalProperty(local: Properties, key: String, fallback: String = ""): String {
-    return local.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
-        ?: System.getenv(key)?.trim()?.takeIf { it.isNotBlank() }
         ?: fallback
 }
 
@@ -67,6 +61,15 @@ val doviStaticLibPath = resolveProperty(devProperties, localProperties, "DOVI_LI
 val doviIncludeDirPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_INCLUDE_DIR")
 val doviPrebuiltRootPath = resolveProperty(devProperties, localProperties, "DOVI_LIBDOVI_PREBUILT_ROOT")
 val sponsorNames = resolveProperty(devProperties, localProperties, "SPONSOR_NAMES", "ragmehos.")
+val sentryDsn = providers.environmentVariable("SENTRY_DSN").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "SENTRY_DSN")
+val sentryAuthToken = providers.environmentVariable("SENTRY_AUTH_TOKEN").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "SENTRY_AUTH_TOKEN").takeIf { it.isNotBlank() }
+val sentryOrg = providers.environmentVariable("SENTRY_ORG").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "SENTRY_ORG").takeIf { it.isNotBlank() }
+val sentryProject = providers.environmentVariable("SENTRY_PROJECT").orNull?.trim()?.takeIf { it.isNotBlank() }
+    ?: resolveProperty(devProperties, localProperties, "SENTRY_PROJECT").takeIf { it.isNotBlank() }
+val sentryMappingUploadEnabled = sentryAuthToken != null && sentryOrg != null && sentryProject != null
 
 fun env(name: String): String? = providers.environmentVariable(name).orNull
 
@@ -95,13 +98,14 @@ val releaseStorePasswordValue = env("NUVIO_RELEASE_STORE_PASSWORD")
 android {
     namespace = "com.nuvio.tv"
     compileSdk = 36
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
         applicationId = "com.nuvio.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1029
-        versionName = "0.7.12-beta"
+        versionCode = 1061
+        versionName = "0.9.5-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -112,8 +116,11 @@ android {
         buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${localProperties.getProperty("TRAKT_CLIENT_SECRET", "")}\"")
         buildConfigField("String", "TRAKT_API_URL", "\"${localProperties.getProperty("TRAKT_API_URL", "https://api.trakt.tv/")}\"")
         buildConfigField("String", "TRAKT_REDIRECT_URI", "\"${localProperties.getProperty("TRAKT_REDIRECT_URI", "urn:ietf:wg:oauth:2.0:oob")}\"")
+        buildConfigField("String", "SIMKL_CLIENT_ID", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_CLIENT_ID")))
+        buildConfigField("String", "SIMKL_APP_NAME", buildConfigString(resolveProperty(devProperties, localProperties, "SIMKL_APP_NAME", "nuvio")))
         buildConfigField("String", "TMDB_API_KEY", "\"${localProperties.getProperty("TMDB_API_KEY", "")}\"")
-        buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://app.nuvio.tv/tv-login")}\"")
+        buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
+        buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
         buildConfigField("boolean", "DOVI_NATIVE_ENABLED", enableDoviNative.toString())
         buildConfigField("boolean", "DOVI_EXTRACTOR_HOOK_READY", doviExtractorHookReady.toString())
         if (enableDoviNative) {
@@ -128,16 +135,17 @@ android {
                 }
             }
         }
-        buildConfigField("String", "DONATIONS_BASE_URL", "\"${localProperties.getProperty("DONATIONS_BASE_URL", "")}\"")
-        buildConfigField("String", "DONATIONS_DONATE_URL", "\"${localProperties.getProperty("DONATIONS_DONATE_URL", "")}\"")
+        buildConfigField("String", "SUPPORTERS_API_BASE_URL", buildConfigString(localProperties.getProperty("SUPPORTERS_API_BASE_URL", "https://nuvio.tv/")))
+        buildConfigField("String", "SUPPORT_URL", buildConfigString(localProperties.getProperty("SUPPORT_URL", "https://nuvio.tv/support")))
         buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
         buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
         buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
         buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
         buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
+        buildConfigField("String", "SENTRY_DSN", buildConfigString(sentryDsn))
 
         // In-app updater (GitHub Releases)
-        buildConfigField("String", "GITHUB_OWNER", "\"tapframe\"")
+        buildConfigField("String", "GITHUB_OWNER", "\"NuvioMedia\"")
         buildConfigField("String", "GITHUB_REPO", "\"NuvioTV\"")
     }
 
@@ -149,6 +157,8 @@ android {
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
             buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_EXTERNAL_PLAYBACK_KEEP_ALIVE_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_CUSTOM_SERVER_CONNECTIONS_ENABLED", "true")
         }
         create("playstore") {
             dimension = "distribution"
@@ -157,6 +167,8 @@ android {
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_EXTERNAL_PLAYBACK_KEEP_ALIVE_ENABLED", "false")
+            buildConfigField("boolean", "FEATURE_CUSTOM_SERVER_CONNECTIONS_ENABLED", "false")
         }
     }
 
@@ -188,22 +200,21 @@ android {
             isMinifyEnabled = false
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
-            buildConfigField("String", "SYNC_BACKEND_MANIFEST_URL", "\"${resolveProperty(devProperties, localProperties, "SYNC_BACKEND_MANIFEST_URL", "https://switch.nuvioapp.space/config.json")}\"")
+            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("debug"))
 
             // Dev environment (from local.dev.properties)
-            buildConfigField("String", "SUPABASE_URL", "\"${resolveProperty(devProperties, localProperties, "SUPABASE_URL")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${resolveProperty(devProperties, localProperties, "SUPABASE_ANON_KEY")}\"")
-            buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL")}\"")
-            buildConfigField("String", "NUVIO_SUPABASE_ANON_KEY", "\"${resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_ANON_KEY")}\"")
-            buildConfigField("String", "NUVIO_AVATAR_PUBLIC_BASE_URL", "\"${resolveProperty(devProperties, localProperties, "NUVIO_AVATAR_PUBLIC_BASE_URL")}\"")
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://app.nuvio.tv/tv-login")}\"")
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_URL")))
+            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_ANON_KEY")))
+            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "NUVIO_SUPABASE_FALLBACK_URL")))
+            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
+            buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${devProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
             buildConfigField("String", "INTRODB_API_URL", "\"${devProperties.getProperty("INTRODB_API_URL", "")}\"")
             buildConfigField("String", "TRAILER_API_URL", "\"${devProperties.getProperty("TRAILER_API_URL", "")}\"")
             buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${devProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
             buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${devProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_BASE_URL", "\"${devProperties.getProperty("DONATIONS_BASE_URL", localProperties.getProperty("DONATIONS_BASE_URL", ""))}\"")
-            buildConfigField("String", "DONATIONS_DONATE_URL", "\"${devProperties.getProperty("DONATIONS_DONATE_URL", localProperties.getProperty("DONATIONS_DONATE_URL", ""))}\"")
+            buildConfigField("String", "SUPPORTERS_API_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "SUPPORTERS_API_BASE_URL", "https://nuvio.tv/")))
+            buildConfigField("String", "SUPPORT_URL", buildConfigString(resolveProperty(devProperties, localProperties, "SUPPORT_URL", "https://nuvio.tv/support")))
             buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${devProperties.getProperty("AVATAR_PUBLIC_BASE_URL", localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", ""))}\"")
             buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${devProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", ""))}\"")
             buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "PLAYBACK_REPORTS_BASE_URL")))
@@ -224,25 +235,24 @@ android {
             }
 
             buildConfigField("boolean", "IS_DEBUG_BUILD", "false")
-            buildConfigField("String", "SYNC_BACKEND_MANIFEST_URL", "\"${localProperties.getProperty("SYNC_BACKEND_MANIFEST_URL", "https://switch.nuvioapp.space/config.json")}\"")
+            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("production"))
 
             // Production environment (from local.properties)
-            buildConfigField("String", "SUPABASE_URL", "\"${resolveLocalProperty(localProperties, "SUPABASE_URL")}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${resolveLocalProperty(localProperties, "SUPABASE_ANON_KEY")}\"")
-            buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${resolveLocalProperty(localProperties, "NUVIO_SUPABASE_URL")}\"")
-            buildConfigField("String", "NUVIO_SUPABASE_ANON_KEY", "\"${resolveLocalProperty(localProperties, "NUVIO_SUPABASE_ANON_KEY")}\"")
-            buildConfigField("String", "NUVIO_AVATAR_PUBLIC_BASE_URL", "\"${resolveLocalProperty(localProperties, "NUVIO_AVATAR_PUBLIC_BASE_URL")}\"")
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://app.nuvio.tv/tv-login")}\"")
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_URL", "")))
+            buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_ANON_KEY", "")))
+            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(localProperties.getProperty("NUVIO_SUPABASE_FALLBACK_URL", "")))
+            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("TV_LOGIN_WEB_BASE_URL", "https://nuvio.tv/tv-login")}\"")
+            buildConfigField("String", "DEVICE_LOGIN_WEB_BASE_URL", "\"${localProperties.getProperty("DEVICE_LOGIN_WEB_BASE_URL", "https://nuvio.tv/link")}\"")
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
             buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
             buildConfigField("String", "TRAILER_API_URL", "\"${localProperties.getProperty("TRAILER_API_URL", "")}\"")
             buildConfigField("String", "IMDB_RATINGS_API_BASE_URL", "\"${localProperties.getProperty("IMDB_RATINGS_API_BASE_URL", "")}\"")
             buildConfigField("String", "IMDB_TAPFRAME_API_BASE_URL", "\"${localProperties.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_BASE_URL", "\"${localProperties.getProperty("DONATIONS_BASE_URL", "")}\"")
-            buildConfigField("String", "DONATIONS_DONATE_URL", "\"${localProperties.getProperty("DONATIONS_DONATE_URL", "")}\"")
+            buildConfigField("String", "SUPPORTERS_API_BASE_URL", buildConfigString(localProperties.getProperty("SUPPORTERS_API_BASE_URL", "https://nuvio.tv/")))
+            buildConfigField("String", "SUPPORT_URL", buildConfigString(localProperties.getProperty("SUPPORT_URL", "https://nuvio.tv/support")))
             buildConfigField("String", "AVATAR_PUBLIC_BASE_URL", "\"${localProperties.getProperty("AVATAR_PUBLIC_BASE_URL", "")}\"")
             buildConfigField("String", "UNIQUE_CONTRIBUTIONS_BASE_URL", "\"${localProperties.getProperty("UNIQUE_CONTRIBUTIONS_BASE_URL", "")}\"")
-            buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(resolveLocalProperty(localProperties, "PLAYBACK_REPORTS_BASE_URL")))
+            buildConfigField("String", "PLAYBACK_REPORTS_BASE_URL", buildConfigString(localProperties.getProperty("PLAYBACK_REPORTS_BASE_URL", "")))
             buildConfigField("String", "PREMIUMIZE_CLIENT_ID", "\"${localProperties.getProperty("PREMIUMIZE_CLIENT_ID", "")}\"")
             buildConfigField("String", "SPONSOR_NAMES", buildConfigString(sponsorNames))
         }
@@ -257,6 +267,7 @@ android {
                 "proguard-rules.pro"
             )
             buildConfigField("boolean", "IS_DEBUG_BUILD", "true")
+            buildConfigField("String", "SENTRY_ENVIRONMENT", buildConfigString("benchmark"))
             applicationIdSuffix = ".debug"
             matchingFallbacks += "release"
         }
@@ -318,6 +329,10 @@ android {
             )
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 androidComponents {
@@ -351,6 +366,28 @@ baselineProfile {
     baselineProfileOutputDir = "generated/baselineProfiles"
     filter {
         include("com.nuvio.tv.**")
+    }
+}
+
+sentry {
+    includeProguardMapping.set(true)
+    autoUploadProguardMapping.set(sentryMappingUploadEnabled)
+    uploadNativeSymbols.set(false)
+    autoUploadNativeSymbols.set(false)
+    includeNativeSources.set(false)
+    includeSourceContext.set(false)
+    autoUploadSourceContext.set(false)
+    includeDependenciesReport.set(false)
+    telemetry.set(false)
+    sentryAuthToken?.let(authToken::set)
+    sentryOrg?.let(org::set)
+    sentryProject?.let(projectName::set)
+    ignoredBuildTypes.set(setOf("debug"))
+    autoInstallation {
+        enabled.set(false)
+    }
+    tracingInstrumentation {
+        enabled.set(false)
     }
 }
 
@@ -404,6 +441,8 @@ dependencies {
     implementation(libs.coil.gif)
     implementation(libs.coil.svg)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.coil.network.cache.control)
+    implementation(libs.lottie.compose)
 
     // Navigation
     implementation(libs.navigation.compose)
@@ -445,9 +484,9 @@ dependencies {
     // Local decoder AARs (AV1, IAMF, MPEG-H)
     implementation(files(
         "libs/lib-decoder-av1-release.aar",
-        "libs/lib-decoder-iamf-release.aar",
         "libs/lib-decoder-mpegh-release.aar"
     ))
+    add("fullImplementation", files("libs/lib-decoder-iamf-release.aar"))
     if (useLocalFfmpegDecoder) {
         implementation(project(":ffmpeg-decoder-downmix"))
     } else {
@@ -459,7 +498,7 @@ dependencies {
     // Local nextlib-mediainfo fork (static FFmpeg; no libav*.so in final AAR)
     implementation(files("libs/nextlib-mediainfo-local.aar"))
     implementation("io.github.abdallahmehiz:mpv-android-lib:0.1.12")
-    implementation("dev.chrisbanes.haze:haze-android:0.7.3") {
+    implementation("dev.chrisbanes.haze:haze-android:1.7.2") {
         exclude(group = "org.jetbrains.compose.ui")
         exclude(group = "org.jetbrains.compose.foundation")
     }
@@ -493,7 +532,9 @@ dependencies {
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.auth)
     implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.storage)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.sentry.android)
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.json)
@@ -506,6 +547,8 @@ dependencies {
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")

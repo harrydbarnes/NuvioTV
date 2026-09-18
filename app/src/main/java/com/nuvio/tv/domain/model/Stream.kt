@@ -24,7 +24,8 @@ data class Stream(
     val qualityValue: Int = -1,
     val clientResolve: StreamClientResolve? = null,
     val debridCacheStatus: StreamDebridCacheStatus? = null,
-    val badges: List<StreamBadge> = emptyList()
+    val badges: List<StreamBadge> = emptyList(),
+    val subtitles: List<Subtitle> = emptyList()
 ) {
     /**
      * Returns the primary stream source URL
@@ -136,15 +137,19 @@ data class Stream(
         append('\u0000')
         append(url ?: infoHash ?: clientResolve?.infoHash ?: ytId ?: externalUrl ?: "")
         append('\u0000')
-        append(clientResolve?.fileIdx ?: "")
+        append(getEffectiveFileIdx() ?: "")
         append('\u0000')
         append(name ?: "")
         append('\u0000')
         append(title ?: "")
-        if (occurrence > 0) {
-            append('\u0000')
-            append(occurrence)
-        }
+        append('\u0000')
+        append(description ?: "")
+        append('\u0000')
+        append(quality ?: "")
+        append('\u0000')
+        append(sources.orEmpty().joinToString("|"))
+        append('\u0000')
+        append(occurrence)
     }
 }
 

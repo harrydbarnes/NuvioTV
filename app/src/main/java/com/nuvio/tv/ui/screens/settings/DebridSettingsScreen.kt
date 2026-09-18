@@ -27,7 +27,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +67,7 @@ import com.nuvio.tv.core.debrid.DebridProvider
 import com.nuvio.tv.core.debrid.DebridProviderAuthMethod
 import com.nuvio.tv.core.debrid.DebridProviders
 import com.nuvio.tv.core.qr.QrCodeGenerator
+import com.nuvio.tv.ui.components.LoadingIndicator
 import com.nuvio.tv.domain.model.DebridStreamAudioChannel
 import com.nuvio.tv.domain.model.DebridStreamAudioTag
 import com.nuvio.tv.domain.model.DebridStreamEncode
@@ -90,6 +90,20 @@ fun DebridSettingsContent(
     initialFocusRequester: FocusRequester? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // The first two rows are gated on a connected provider and cannot take focus without one,
+    // so the entry requester goes to the first row that can accept it. Left on a gated row the
+    // request is declined, focus stays on the category rail, and the next press walks the rail
+    // instead of entering these options.
+    //
+    // The last of the three is the first account row, which is ungated and so always takes the
+    // request. That rests on DebridProviders.visible() having something in it: it filters a fixed
+    // list on a compile time flag, so it is empty only if every provider is hidden at once, and
+    // this screen has nothing to show at all in that case.
+    val entryOnCloudLibrary = uiState.hasCloudLibraryProvider
+    val entryOnDebridToggle = !entryOnCloudLibrary && uiState.hasResolverProvider
+    // The first visible account row, which is always enabled whatever is connected, so it is the
+    // one row that can always take the entry requester.
+    val entryOnFirstAccount = !entryOnCloudLibrary && !entryOnDebridToggle
     var activeApiKeyDialog by remember { mutableStateOf<String?>(null) }
     var activeDeviceAuthDialog by remember { mutableStateOf<String?>(null) }
     var activeStreamPicker by remember { mutableStateOf<DebridStreamPicker?>(null) }
@@ -137,7 +151,7 @@ fun DebridSettingsContent(
                             modifier = Modifier
                                 .padding(top = NuvioTheme.spacing.xxs)
                                 .then(
-                                    if (initialFocusRequester != null) {
+                                    if (initialFocusRequester != null && entryOnCloudLibrary) {
                                         Modifier.focusRequester(initialFocusRequester)
                                     } else {
                                         Modifier
@@ -153,6 +167,11 @@ fun DebridSettingsContent(
                             subtitle = stringResource(R.string.debrid_enable_subtitle),
                             checked = uiState.canResolvePlayableLinks,
                             onToggle = { viewModel.onEvent(DebridSettingsEvent.ToggleEnabled(!uiState.enabled)) },
+                            modifier = if (initialFocusRequester != null && entryOnDebridToggle) {
+                                Modifier.focusRequester(initialFocusRequester)
+                            } else {
+                                Modifier
+                            },
                             enabled = uiState.hasResolverProvider
                         )
                     }
@@ -179,7 +198,7 @@ fun DebridSettingsContent(
                         DebridSectionLabel(text = stringResource(R.string.debrid_section_account))
                     }
 
-                    DebridProviders.visible().forEach { provider ->
+                    DebridProviders.visible().forEachIndexed { providerIndex, provider ->
                         item(key = "debrid_${provider.id}_api_key") {
                             SettingsActionRow(
                                 title = provider.displayName,
@@ -199,6 +218,15 @@ fun DebridSettingsContent(
                                         DebridProviderAuthMethod.DeviceCode -> activeDeviceAuthDialog = provider.id
                                         DebridProviderAuthMethod.ApiKey -> activeApiKeyDialog = provider.id
                                     }
+                                },
+                                modifier = if (
+                                    initialFocusRequester != null &&
+                                    entryOnFirstAccount &&
+                                    providerIndex == 0
+                                ) {
+                                    Modifier.focusRequester(initialFocusRequester)
+                                } else {
+                                    Modifier
                                 },
                                 enabled = true
                             )
@@ -1306,7 +1334,7 @@ private fun DebridDeviceAuthDialog(
                 horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(strokeWidth = NuvioTheme.spacing.xxs, modifier = Modifier.size(18.dp))
+                LoadingIndicator(modifier = Modifier.size(18.dp))
                 Text(
                     text = startingMessage,
                     style = MaterialTheme.typography.bodyMedium,
@@ -1348,7 +1376,7 @@ private fun DebridDeviceAuthDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (isPolling) {
-                        CircularProgressIndicator(strokeWidth = NuvioTheme.spacing.xxs, modifier = Modifier.size(NuvioTheme.spacing.lg))
+                        LoadingIndicator(modifier = Modifier.size(NuvioTheme.spacing.lg))
                     }
                     Text(
                         text = message,
@@ -1494,7 +1522,7 @@ private fun DebridApiKeyDialog(
                     shape = RoundedCornerShape(10.dp)
                 ),
                 focusedBorder = Border(
-                    border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                    border = NuvioTheme.focusRing.border(NuvioTheme.spacing.xxs),
                     shape = RoundedCornerShape(10.dp)
                 )
             ),

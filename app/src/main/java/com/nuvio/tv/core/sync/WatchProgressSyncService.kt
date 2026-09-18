@@ -3,22 +3,20 @@ package com.nuvio.tv.core.sync
 import android.util.Log
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.profile.ProfileManager
-import com.nuvio.tv.data.local.TraktAuthDataStore
+import com.nuvio.tv.core.tracking.TrackingProgressProviderRegistry
+import com.nuvio.tv.core.tracking.providerId
 import com.nuvio.tv.data.local.TraktSettingsDataStore
-import com.nuvio.tv.data.local.WatchProgressSource
 import com.nuvio.tv.data.local.WatchProgressPreferences
 import com.nuvio.tv.data.remote.supabase.SupabaseWatchProgress
 import com.nuvio.tv.data.remote.supabase.SupabaseWatchProgressEvent
 import com.nuvio.tv.domain.model.WatchProgress
-import com.nuvio.tv.core.network.SyncBackendSupabaseProvider
-import kotlinx.coroutines.CoroutineScope
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -42,41 +40,23 @@ data class WatchProgressRemoteSyncResult(
 @Singleton
 class WatchProgressSyncService @Inject constructor(
     private val authManager: AuthManager,
-    private val supabaseProvider: SyncBackendSupabaseProvider,
+    private val postgrest: Postgrest,
     private val watchProgressPreferences: WatchProgressPreferences,
-    private val traktAuthDataStore: TraktAuthDataStore,
+    private val trackingProviderRegistry: TrackingProgressProviderRegistry,
     private val traktSettingsDataStore: TraktSettingsDataStore,
-    private val profileManager: ProfileManager
+    private val profileManager: ProfileManager,
+    private val syncClientIdentity: SyncClientIdentity,
+    private val mutationStore: WatchStateMutationStore
 ) {
-    private val postgrest
-        get() = supabaseProvider.postgrest
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val deltaSyncMutex = Mutex()
+    private val outboundSyncMutexes = ConcurrentHashMap<Int, Mutex>()
 
-    /**
-     * Timestamp (epoch ms) of the last successful push to remote.
-     * Used by [WatchProgressPreferences.mergeRemoteEntries] to protect local entries
-     * that were created after the last push - these haven't reached remote yet,
-     * so their absence from a pull response does NOT mean they were deleted on
-     * another device.
-     */
-    @Volatile
-    var lastSuccessfulPushMs: Long = 0L
-        private set
+    private fun outboundSyncMutex(profileId: Int): Mutex =
+        outboundSyncMutexes.computeIfAbsent(profileId) { Mutex() }
 
-    /** Called after a successful push to record the sync point. */
-    fun markPushSucceeded() {
+    private suspend fun markPushSucceeded(profileId: Int) {
         val now = System.currentTimeMillis()
-        lastSuccessfulPushMs = now
-        scope.launch {
-            watchProgressPreferences.setLastSuccessfulPushMs(now)
-        }
-    }
-
-    /** Restores persisted push timestamp on startup. */
-    suspend fun restoreLastPushTimestamp() {
-        lastSuccessfulPushMs = watchProgressPreferences.getLastSuccessfulPushMs()
+        watchProgressPreferences.advanceLastSuccessfulPushMs(now, profileId)
     }
     private suspend fun <T> withJwtRefreshRetry(block: suspend () -> T): T {
         return try {
@@ -87,10 +67,12 @@ class WatchProgressSyncService @Inject constructor(
         }
     }
 
-    suspend fun shouldUseSupabaseWatchProgressSync(): Boolean {
-        val hasEffectiveTraktConnection = traktAuthDataStore.isEffectivelyAuthenticated.first()
-        val source = traktSettingsDataStore.watchProgressSource.first()
-        return !(hasEffectiveTraktConnection && source == WatchProgressSource.TRAKT)
+    suspend fun shouldUseSupabaseWatchProgressSync(
+        profileId: Int = profileManager.activeProfileId.value
+    ): Boolean {
+        val source = traktSettingsDataStore.getWatchProgressSource(profileId)
+        val providerId = source.providerId ?: return true
+        return trackingProviderRegistry.provider(providerId)?.isAuthenticated?.first() != true
     }
 
     private suspend fun fetchDeltaCursor(profileId: Int): Long {
@@ -127,13 +109,22 @@ class WatchProgressSyncService @Inject constructor(
         keys: Collection<String>,
         profileId: Int = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
+        outboundSyncMutex(profileId).withLock {
+            deleteFromRemoteLocked(keys, profileId)
+        }
+    }
+
+    private suspend fun deleteFromRemoteLocked(
+        keys: Collection<String>,
+        profileId: Int
+    ): Result<Unit> {
+        return try {
             val distinctKeys = keys
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .distinct()
             if (distinctKeys.isEmpty()) {
-                return@withContext Result.success(Unit)
+                return Result.success(Unit)
             }
 
             val params = buildJsonObject {
@@ -141,10 +132,12 @@ class WatchProgressSyncService @Inject constructor(
                     distinctKeys.forEach { add(it) }
                 })
                 put("p_profile_id", profileId)
+                putSyncOriginClientId(syncClientIdentity)
             }
             withJwtRefreshRetry {
                 postgrest.rpc("sync_delete_watch_progress", params)
             }
+            mutationStore.acknowledgeProgressDeletes(distinctKeys, profileId)
             Log.d(TAG, "Deleted ${distinctKeys.size} watch progress entries from remote for profile $profileId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -153,51 +146,59 @@ class WatchProgressSyncService @Inject constructor(
         }
     }
 
-    /**
-     * Push all local watch progress to Supabase via RPC.
-     * Always syncs regardless of CW source — both Trakt and Nuvio Sync
-     * should have up-to-date progress data.
-     *
-     * @param profileId The profile to push data for. Captured at call-site to
-     *   prevent race conditions when the active profile changes mid-operation.
-     */
     suspend fun pushToRemote(
         profileId: Int = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val rawEntries = watchProgressPreferences.getAllRawEntries(profileId)
+        outboundSyncMutex(profileId).withLock {
+            pushToRemoteLocked(profileId)
+        }
+    }
+
+    private suspend fun pushToRemoteLocked(profileId: Int): Result<Unit> {
+        return try {
+            val pendingDeletes = mutationStore.pendingProgressDeletes(profileId)
+            if (pendingDeletes.isNotEmpty()) {
+                deleteFromRemoteLocked(pendingDeletes, profileId).getOrElse { throw it }
+            }
+            val rawEntries = mutationStore.pendingProgressUpserts(profileId)
             val entries = canonicalizeForRemote(rawEntries).filterValues { progress ->
                 !(progress.position <= 1L && progress.duration <= 1L && progress.duration > 0L)
             }
-            Log.d(TAG, "pushToRemote: ${rawEntries.size} local entries, ${entries.size} canonical entries to push for profile $profileId")
+            Log.d(TAG, "pushToRemote: ${rawEntries.size} pending entries, ${entries.size} canonical entries to push for profile $profileId")
             entries.forEach { (key, progress) ->
                 Log.d(TAG, "  push entry: key=$key contentId=${progress.contentId} type=${progress.contentType} pos=${progress.position} dur=${progress.duration} lastWatched=${progress.lastWatched}")
             }
 
-            val params = buildJsonObject {
-                put("p_entries", buildJsonArray {
-                    entries.forEach { (key, progress) ->
-                        addJsonObject {
-                            put("content_id", progress.contentId)
-                            put("content_type", progress.contentType)
-                            put("video_id", progress.videoId)
-                            progress.season?.let { put("season", it) }
-                            progress.episode?.let { put("episode", it) }
-                            put("position", progress.position)
-                            put("duration", progress.duration)
-                            put("last_watched", progress.lastWatched)
-                            put("progress_key", key)
+            if (entries.isNotEmpty()) {
+                val params = buildJsonObject {
+                    put("p_entries", buildJsonArray {
+                        entries.forEach { (key, progress) ->
+                            addJsonObject {
+                                put("content_id", progress.contentId)
+                                put("content_type", progress.contentType)
+                                put("video_id", progress.videoId)
+                                progress.season?.let { put("season", it) }
+                                progress.episode?.let { put("episode", it) }
+                                put("position", progress.position)
+                                put("duration", progress.duration)
+                                put("last_watched", progress.lastWatched)
+                                put("progress_key", key)
+                            }
                         }
-                    }
-                })
-                put("p_profile_id", profileId)
-            }
-            withJwtRefreshRetry {
-                postgrest.rpc("sync_push_watch_progress", params)
+                    })
+                    put("p_profile_id", profileId)
+                    putSyncOriginClientId(syncClientIdentity)
+                }
+                withJwtRefreshRetry {
+                    postgrest.rpc("sync_push_watch_progress", params)
+                }
             }
 
+            mutationStore.acknowledgeProgressUpserts(rawEntries, profileId)
             Log.d(TAG, "Pushed ${entries.size} watch progress entries to remote for profile $profileId")
-            markPushSucceeded()
+            if (pendingDeletes.isNotEmpty() || rawEntries.isNotEmpty()) {
+                markPushSucceeded(profileId)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to push watch progress to remote", e)
@@ -217,7 +218,17 @@ class WatchProgressSyncService @Inject constructor(
         progress: WatchProgress,
         profileId: Int = profileManager.activeProfileId.value
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
+        outboundSyncMutex(profileId).withLock {
+            pushSingleToRemoteLocked(key, progress, profileId)
+        }
+    }
+
+    private suspend fun pushSingleToRemoteLocked(
+        key: String,
+        progress: WatchProgress,
+        profileId: Int
+    ): Result<Unit> {
+        return try {
             val params = buildJsonObject {
                 put("p_entries", buildJsonArray {
                     addJsonObject {
@@ -233,13 +244,18 @@ class WatchProgressSyncService @Inject constructor(
                     }
                 })
                 put("p_profile_id", profileId)
+                putSyncOriginClientId(syncClientIdentity)
             }
             withJwtRefreshRetry {
                 postgrest.rpc("sync_push_watch_progress", params)
             }
 
+            mutationStore.acknowledgeProgressUpserts(mapOf(key to progress), profileId)
             Log.d(TAG, "Pushed single watch progress entry to remote for profile $profileId (key=$key)")
-            markPushSucceeded()
+            // Deliberately does not move the sync point. One entry reaching remote says
+            // nothing about the rest, and advancing it here would mark every other local
+            // entry as synced, so the next pull would drop the ones that never made it.
+            // Only the full push in pushToRemote may move it.
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to push single watch progress to remote", e)
@@ -262,8 +278,8 @@ class WatchProgressSyncService @Inject constructor(
         limit: Int? = null
     ): Result<List<Pair<String, WatchProgress>>> = withContext(Dispatchers.IO) {
         try {
-            if (!shouldUseSupabaseWatchProgressSync()) {
-                Log.d(TAG, "Using Trakt watch progress, skipping watch progress pull")
+            if (!shouldUseSupabaseWatchProgressSync(profileId)) {
+                Log.d(TAG, "Using tracking provider watch progress, skipping watch progress pull")
                 return@withContext Result.success(emptyList())
             }
 
@@ -322,6 +338,33 @@ class WatchProgressSyncService @Inject constructor(
         }
     }
 
+    suspend fun syncSnapshotFromRemote(
+        profileId: Int = profileManager.activeProfileId.value
+    ): Result<WatchProgressRemoteSyncResult> = withContext(Dispatchers.IO) {
+        deltaSyncMutex.withLock {
+            try {
+                if (!shouldUseSupabaseWatchProgressSync(profileId)) {
+                    Log.d(TAG, "Using tracking provider watch progress, skipping watch progress snapshot pull")
+                    return@withLock Result.success(WatchProgressRemoteSyncResult(0, 0, usedSnapshot = false, preservedLocalItems = false))
+                }
+                val cursorBeforeSnapshot = try {
+                    fetchDeltaCursor(profileId)
+                } catch (e: Exception) {
+                    Log.w(TAG, "syncSnapshotFromRemote: delta cursor unavailable, applying snapshot without initialized cursor for profile $profileId", e)
+                    null
+                }
+                val result = pullSnapshotFromRemote(profileId, resetDeltaState = cursorBeforeSnapshot == null)
+                if (cursorBeforeSnapshot != null) {
+                    watchProgressPreferences.setDeltaState(cursorBeforeSnapshot, initialized = true, profileId = profileId)
+                }
+                Result.success(result)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to pull watch progress snapshot from remote", e)
+                Result.failure(e)
+            }
+        }
+    }
+
     private suspend fun syncDeltaFromRemoteLocked(
         profileId: Int
     ): Result<WatchProgressRemoteSyncResult> {
@@ -331,10 +374,10 @@ class WatchProgressSyncService @Inject constructor(
             val localCount = watchProgressPreferences.getAllRawEntries(profileId).size
             Log.d(
                 TAG,
-                "syncDeltaFromRemote: start profile=$profileId localCount=$localCount deltaInitialized=$deltaInitialized cursor=$deltaCursor lastPush=$lastSuccessfulPushMs"
+                "syncDeltaFromRemote: start profile=$profileId localCount=$localCount deltaInitialized=$deltaInitialized cursor=$deltaCursor"
             )
-            if (!shouldUseSupabaseWatchProgressSync()) {
-                Log.d(TAG, "Using Trakt watch progress, skipping watch progress delta pull")
+            if (!shouldUseSupabaseWatchProgressSync(profileId)) {
+                Log.d(TAG, "Using tracking provider watch progress, skipping watch progress delta pull")
                 return Result.success(WatchProgressRemoteSyncResult(0, 0, usedSnapshot = false, preservedLocalItems = false))
             }
 
@@ -348,9 +391,12 @@ class WatchProgressSyncService @Inject constructor(
                     return Result.success(fallbackResult)
                 }
                 val remoteEntries = pullFromRemote(profileId).getOrElse { throw it }
+                val pendingUpsertKeys = mutationStore.pendingProgressUpserts(profileId).keys
+                val pendingDeleteKeys = mutationStore.pendingProgressDeletes(profileId)
                 val hadUnsyncedProgress = watchProgressPreferences.mergeRemoteEntries(
                     remoteEntries.toMap(),
-                    lastSuccessfulPushMs = lastSuccessfulPushMs,
+                    pendingUpsertKeys = pendingUpsertKeys,
+                    pendingDeleteKeys = pendingDeleteKeys,
                     profileId = profileId
                 )
                 watchProgressPreferences.setDeltaState(cursorBeforeSnapshot, initialized = true, profileId = profileId)
@@ -361,7 +407,8 @@ class WatchProgressSyncService @Inject constructor(
                         upsertedEntries = remoteEntries.size,
                         deletedEntries = 0,
                         usedSnapshot = true,
-                        preservedLocalItems = hadUnsyncedProgress
+                        preservedLocalItems = hadUnsyncedProgress ||
+                            mutationStore.hasPendingProgressMutations(profileId)
                     )
                 )
             }
@@ -404,10 +451,13 @@ class WatchProgressSyncService @Inject constructor(
                     progress?.let { key to it }
                 }.toMap()
                 val deletes = pageChanges.filterValues { it == null }.keys
+                val pendingUpsertKeys = mutationStore.pendingProgressUpserts(profileId).keys
+                val pendingDeleteKeys = mutationStore.pendingProgressDeletes(profileId)
                 val pagePreservedLocal = watchProgressPreferences.applyRemoteChanges(
                     upserts = upserts,
                     deletes = deletes,
-                    lastSuccessfulPushMs = lastSuccessfulPushMs,
+                    pendingUpsertKeys = pendingUpsertKeys,
+                    pendingDeleteKeys = pendingDeleteKeys,
                     profileId = profileId
                 )
                 preservedLocalItems = preservedLocalItems || pagePreservedLocal
@@ -422,6 +472,7 @@ class WatchProgressSyncService @Inject constructor(
             }
 
             val finalLocalCount = watchProgressPreferences.getAllRawEntries(profileId).size
+            preservedLocalItems = preservedLocalItems || mutationStore.hasPendingProgressMutations(profileId)
             Log.d(TAG, "syncDeltaFromRemote: finished profile=$profileId appliedUpserts=$totalUpserts appliedDeletes=$totalDeletes cursor=$cursor finalLocalCount=$finalLocalCount preservedLocal=$preservedLocalItems")
             Result.success(
                 WatchProgressRemoteSyncResult(
@@ -442,9 +493,12 @@ class WatchProgressSyncService @Inject constructor(
         resetDeltaState: Boolean
     ): WatchProgressRemoteSyncResult {
         val remoteEntries = pullFromRemote(profileId).getOrElse { throw it }
+        val pendingUpsertKeys = mutationStore.pendingProgressUpserts(profileId).keys
+        val pendingDeleteKeys = mutationStore.pendingProgressDeletes(profileId)
         val hadUnsyncedProgress = watchProgressPreferences.mergeRemoteEntries(
             remoteEntries.toMap(),
-            lastSuccessfulPushMs = lastSuccessfulPushMs,
+            pendingUpsertKeys = pendingUpsertKeys,
+            pendingDeleteKeys = pendingDeleteKeys,
             profileId = profileId
         )
         if (resetDeltaState) {
@@ -456,7 +510,7 @@ class WatchProgressSyncService @Inject constructor(
             upsertedEntries = remoteEntries.size,
             deletedEntries = 0,
             usedSnapshot = true,
-            preservedLocalItems = hadUnsyncedProgress
+            preservedLocalItems = hadUnsyncedProgress || mutationStore.hasPendingProgressMutations(profileId)
         )
     }
 
