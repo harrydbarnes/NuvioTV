@@ -148,6 +148,7 @@ data class SubtitleStyleSettings(
     val verticalOffset: Int = 5, // Percentage from bottom (-20 to 50)
     val bold: Boolean = false,
     val textColor: Int = Color.White.toArgb(),
+    val hdrBrightnessPercent: Int = 100, // Relative HDR subtitle text brightness (20-100)
     val backgroundColor: Int = Color.Transparent.toArgb(),
     val outlineEnabled: Boolean = true,
     val outlineColor: Int = Color.Black.toArgb(),
@@ -583,6 +584,7 @@ class PlayerSettingsDataStore @Inject constructor(
     private val subtitleVerticalOffsetKey = intPreferencesKey("subtitle_vertical_offset")
     private val subtitleBoldKey = booleanPreferencesKey("subtitle_bold")
     private val subtitleTextColorKey = intPreferencesKey("subtitle_text_color")
+    private val subtitleHdrBrightnessPercentKey = intPreferencesKey("subtitle_hdr_brightness_percent")
     private val subtitleBackgroundColorKey = intPreferencesKey("subtitle_background_color")
     private val subtitleOutlineEnabledKey = booleanPreferencesKey("subtitle_outline_enabled")
     private val subtitleOutlineColorKey = intPreferencesKey("subtitle_outline_color")
@@ -988,6 +990,7 @@ class PlayerSettingsDataStore @Inject constructor(
                         verticalOffset = prefs[subtitleVerticalOffsetKey] ?: 5,
                         bold = prefs[subtitleBoldKey] ?: false,
                         textColor = prefs[subtitleTextColorKey] ?: Color.White.toArgb(),
+                        hdrBrightnessPercent = (prefs[subtitleHdrBrightnessPercentKey] ?: 100).coerceIn(20, 100),
                         backgroundColor = prefs[subtitleBackgroundColorKey] ?: Color.Transparent.toArgb(),
                         outlineEnabled = prefs[subtitleOutlineEnabledKey] ?: true,
                         outlineColor = prefs[subtitleOutlineColorKey] ?: Color.Black.toArgb(),
@@ -1526,6 +1529,9 @@ class PlayerSettingsDataStore @Inject constructor(
     suspend fun setSubtitleVerticalOffset(offset: Int) { store().edit { it[subtitleVerticalOffsetKey] = offset.coerceIn(-20, 50) } }
     suspend fun setSubtitleBold(bold: Boolean) { store().edit { it[subtitleBoldKey] = bold } }
     suspend fun setSubtitleTextColor(color: Int) { store().edit { it[subtitleTextColorKey] = color } }
+    suspend fun setSubtitleHdrBrightnessPercent(percent: Int) {
+        store().edit { it[subtitleHdrBrightnessPercentKey] = percent.coerceIn(20, 100) }
+    }
     suspend fun setSubtitleBackgroundColor(color: Int) { store().edit { it[subtitleBackgroundColorKey] = color } }
     suspend fun setSubtitleOutlineEnabled(enabled: Boolean) { store().edit { it[subtitleOutlineEnabledKey] = enabled } }
     suspend fun setSubtitleOutlineColor(color: Int) { store().edit { it[subtitleOutlineColorKey] = color } }
